@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventory-pwa-v1-5-compat-cache-1';
+const CACHE_NAME = 'inventory-pwa-v1-5-compat-cache-2';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
@@ -18,6 +18,10 @@ self.addEventListener('fetch',event=>{
  const url=new URL(event.request.url);
  const isIndex=url.origin===self.location.origin&&(url.pathname.endsWith('/inventory-pwa/')||url.pathname.endsWith('/inventory-pwa/index.html'));
  if(isIndex){event.respondWith(fixedIndexResponse(event.request));return;}
+ if(url.pathname.endsWith('/jan-scanner.js')){
+   event.respondWith(fetch(event.request,{cache:'no-store'}).then(response=>{const clone=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(event.request,clone));return response;}).catch(()=>caches.match(event.request)));
+   return;
+ }
  event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{
    const clone=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(event.request,clone));return response;
  }).catch(()=>caches.match(event.request))));
