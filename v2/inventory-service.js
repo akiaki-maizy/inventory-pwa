@@ -15,7 +15,7 @@ async function mutate(productId,handler){
   const fail=e=>{try{tx.abort();}catch(_){}reject(e instanceof Error?e:new Error(String(e)));};
   products.get(productId).onsuccess=e=>{
    const product=e.target.result;if(!product){fail(new Error('商品が見つかりません'));return;}
-   lots.getAll().onsuccess=async le=>{
+   lots.getAll().onsuccess=le=>{
     try{
      const productLots=(le.target.result||[]).filter(x=>x.productId===productId);
      const storeReq=settings.get('storeName');
@@ -66,5 +66,23 @@ async function setLotQty(productId,lotId,target){
  return mutate(productId,ctx=>{const lot=ctx.productLots.find(x=>x.id===lotId);if(!lot)throw new Error('対象ロットが見つかりません');const before=Number(lot.qty)||0,diff=target-before;if(!diff)return{balance:ctx.productLots.reduce((s,l)=>s+Number(l.qty||0),0),diff:0};if(target===0)ctx.lots.delete(lot.id);else ctx.lots.put({...lot,qty:target});const balance=ctx.productLots.reduce((s,l)=>s+Number(l.qty||0),0)+diff;ctx.addHistory({lotId,type:'期限別棚卸',qty:diff,balance,note:lot.expiry?`賞味期限 ${lot.expiry}`:'期限なし'});return{balance,diff};});
 }
 
-window.InventoryService={receive,useFEFO,discard,setLotQty};
+async function setProductTotal(productId,target){
+ target=intQty(target,'棚卸数量');
+ return mutate(productId,ctx=>{
+  const active=ctx.productLots.filter(l=>(Number(l.qty)||0)>0).sort((a,b)=>expiryKey(a).localeCompare(expiryKey(b))||String(a.receivedAt||'').localeCompare(String(b.receivedAt||'')));
+  const current=active.reduce((s,l)=>s+Number(l.qty),0),diff=target-current;
+  if(!diff)return{balance:current,diff:0};
+  if(diff>0){
+   const lot={id:uid(),productId,locationId:ctx.product.locationId||null,qty:diff,expiry:null,receivedAt:today()};
+   ctx.lots.put(lot);
+  }else{
+   let remaining=-diff;
+   for(const lot of active){if(!remaining)break;const take=Math.min(Number(lot.qty),remaining),after=Number(lot.qty)-take;if(after===0)ctx.lots.delete(lot.id);else ctx.lots.put({...lot,qty:after});remaining-=take;}
+  }
+  ctx.addHistory({type:'棚卸調整',qty:diff,balance:target,note:'商品合計棚卸'});
+  return{balance:target,diff};
+ });
+}
+
+window.InventoryService={receive,useFEFO,discard,setLotQty,setProductTotal};
 })();
