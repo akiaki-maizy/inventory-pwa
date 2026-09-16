@@ -1,5 +1,5 @@
-const CACHE_NAME = 'inventory-pwa-v1-17-product-location-status';
-const CURRENT_VERSION = 'MVP Ver.1.17 / 商品・保管場所使用停止 / 端末内保存';
+const CACHE_NAME = 'inventory-pwa-v1-18-reactivation-warning';
+const CURRENT_VERSION = 'MVP Ver.1.18 / 再開時保管場所確認 / 端末内保存';
 const FEATURE_FILES=['jan-scanner.js','case-stock.js','date-wheel.js','location-order.js','location-status.js','product-status.js'];
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png',...FEATURE_FILES.map(f=>'./'+f)];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
