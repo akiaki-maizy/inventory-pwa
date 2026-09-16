@@ -2,6 +2,8 @@
 'use strict';
 const ZXING_URL='https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js';
 const SUPPLIER_KEY='inventory-pwa-suppliers-v1';
+const APP_VERSION='MVP Ver.1.6';
+const APP_CHANGE='仕入先選択・分類段階表示';
 const nativeSupported='BarcodeDetector' in window;
 const cameraSupported=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 let detector=null,stream=null,raf=null,overlay=null,video=null,busy=false,zxingControls=null,zxingLoading=null,scanHintTimer=null,statusTimer=null,scanStartedAt=0,lastStatusKey='';
@@ -11,154 +13,30 @@ function normalizeJan(v){return String(v||'').replace(/\D/g,'');}
 function looksLikeJan(v){const s=normalizeJan(v);return s.length===8||s.length===12||s.length===13;}
 async function findByJan(jan){return(await getProducts()).find(p=>normalizeJan(p.jan)===jan);}
 function wait(ms){return new Promise(r=>setTimeout(r,ms));}
-function setScannerStatus(title,detail='',kind='normal'){
- if(!overlay)return;
- const box=overlay.querySelector('#janStatusBox'),main=overlay.querySelector('#janStatusMain'),sub=overlay.querySelector('#janStatusSub');
- if(!box||!main||!sub)return;
- const key=`${title}|${detail}|${kind}`;if(key===lastStatusKey)return;lastStatusKey=key;
- main.textContent=title;sub.textContent=detail;
- const styles={normal:['rgba(17,24,39,.88)','#fff'],active:['rgba(30,64,175,.92)','#fff'],near:['rgba(180,83,9,.94)','#fff'],success:['rgba(4,120,87,.94)','#fff']};
- const [bg,fg]=styles[kind]||styles.normal;box.style.background=bg;box.style.color=fg;
-}
-function updateWaitingStatus(){
- if(!overlay||busy)return;
- const elapsed=Date.now()-scanStartedAt;
- if(elapsed<1800)setScannerStatus('バーコードを探しています…','枠内にバーコード全体を入れてください','active');
- else if(elapsed<5000)setScannerStatus('ピントを合わせています…','そのまま2〜3秒静止してください','active');
- else setScannerStatus('読み取りを続けています…','読めない場合は10〜20cmほど離して、明るい場所で試してください','near');
-}
-async function handleJan(jan){
- jan=normalizeJan(jan);if(!jan||busy)return;
- if(!looksLikeJan(jan)){setScannerStatus('コードを検出しました','JANとして確定できませんでした','near');const retry=prompt(`読み取ったコード「${jan}」はJANとして認識できませんでした。JANコードを入力してください。`,jan);if(retry&&looksLikeJan(retry))return handleJan(retry);return;}
- busy=true;
- setScannerStatus('JANコードを読み取りました ✓',`JAN ${jan} / 商品を検索しています…`,'success');
- const p=await findByJan(jan);
- await wait(300);
- await stopScanner();
- if(p){if(typeof openProduct==='function')await openProduct(p.id);alert(`JAN ${jan}\n登録済みの商品を開きました。`);}else{if(typeof showView==='function')showView('addProduct');const input=document.getElementById('productJan');if(input)input.value=jan;alert(`JAN ${jan}\n未登録の商品です。商品名などを入力して登録してください。`);}busy=false;
-}
+function setScannerStatus(title,detail='',kind='normal'){if(!overlay)return;const box=overlay.querySelector('#janStatusBox'),main=overlay.querySelector('#janStatusMain'),sub=overlay.querySelector('#janStatusSub');if(!box||!main||!sub)return;const key=`${title}|${detail}|${kind}`;if(key===lastStatusKey)return;lastStatusKey=key;main.textContent=title;sub.textContent=detail;const styles={normal:['rgba(17,24,39,.88)','#fff'],active:['rgba(30,64,175,.92)','#fff'],near:['rgba(180,83,9,.94)','#fff'],success:['rgba(4,120,87,.94)','#fff']};const [bg,fg]=styles[kind]||styles.normal;box.style.background=bg;box.style.color=fg;}
+function updateWaitingStatus(){if(!overlay||busy)return;const elapsed=Date.now()-scanStartedAt;if(elapsed<1800)setScannerStatus('バーコードを探しています…','枠内にバーコード全体を入れてください','active');else if(elapsed<5000)setScannerStatus('ピントを合わせています…','そのまま2〜3秒静止してください','active');else setScannerStatus('読み取りを続けています…','読めない場合は10〜20cmほど離して、明るい場所で試してください','near');}
+async function handleJan(jan){jan=normalizeJan(jan);if(!jan||busy)return;if(!looksLikeJan(jan)){setScannerStatus('コードを検出しました','JANとして確定できませんでした','near');const retry=prompt(`読み取ったコード「${jan}」はJANとして認識できませんでした。JANコードを入力してください。`,jan);if(retry&&looksLikeJan(retry))return handleJan(retry);return;}busy=true;setScannerStatus('JANコードを読み取りました ✓',`JAN ${jan} / 商品を検索しています…`,'success');const p=await findByJan(jan);await wait(300);await stopScanner();if(p){if(typeof openProduct==='function')await openProduct(p.id);alert(`JAN ${jan}\n登録済みの商品を開きました。`);}else{if(typeof showView==='function')showView('addProduct');const input=document.getElementById('productJan');if(input)input.value=jan;alert(`JAN ${jan}\n未登録の商品です。商品名などを入力して登録してください。`);}busy=false;}
 function manualInput(message='JANコードを入力してください。'){const jan=prompt(message);if(jan)handleJan(jan);}
-async function stopScanner(){
- if(scanHintTimer)clearTimeout(scanHintTimer);scanHintTimer=null;
- if(statusTimer)clearInterval(statusTimer);statusTimer=null;
- if(raf)cancelAnimationFrame(raf);raf=null;
- if(zxingControls){try{zxingControls.stop();}catch(e){}zxingControls=null;}
- if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;
- if(overlay)overlay.remove();overlay=null;video=null;detector=null;lastStatusKey='';
-}
-function createOverlay(modeText){
- overlay=document.createElement('div');overlay.style='position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;';
- overlay.innerHTML=`<div style="padding:12px;background:#111;color:#fff;display:flex;gap:10px;align-items:center"><div style="flex:1"><strong>JANコードを横向きに枠内へ</strong><div style="font-size:12px;opacity:.75;margin-top:3px">${modeText}</div></div><button id="janClose" style="min-height:44px">閉じる</button></div><div style="position:relative;flex:1;overflow:hidden"><video id="janVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;left:5%;right:5%;top:36%;height:20%;border:4px solid #fff;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.20)"></div><div id="janStatusBox" style="position:absolute;left:6%;right:6%;bottom:6%;padding:12px 14px;background:rgba(17,24,39,.88);color:#fff;text-align:center;border-radius:12px;transition:background .15s ease"><div id="janStatusMain" style="font-size:17px;font-weight:800;line-height:1.35">カメラを準備しています…</div><div id="janStatusSub" style="font-size:12px;opacity:.9;margin-top:5px;line-height:1.4">少しお待ちください</div></div></div>`;
- document.body.appendChild(overlay);video=overlay.querySelector('#janVideo');overlay.querySelector('#janClose').onclick=stopScanner;
- setScannerStatus('カメラを準備しています…','少しお待ちください','normal');
-}
+async function stopScanner(){if(scanHintTimer)clearTimeout(scanHintTimer);scanHintTimer=null;if(statusTimer)clearInterval(statusTimer);statusTimer=null;if(raf)cancelAnimationFrame(raf);raf=null;if(zxingControls){try{zxingControls.stop();}catch(e){}zxingControls=null;}if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;if(overlay)overlay.remove();overlay=null;video=null;detector=null;lastStatusKey='';}
+function createOverlay(modeText){overlay=document.createElement('div');overlay.style='position:fixed;inset:0;background:#000;z-index:9999;display:flex;flex-direction:column;';overlay.innerHTML=`<div style="padding:12px;background:#111;color:#fff;display:flex;gap:10px;align-items:center"><div style="flex:1"><strong>JANコードを横向きに枠内へ</strong><div style="font-size:12px;opacity:.75;margin-top:3px">${modeText}</div></div><button id="janClose" style="min-height:44px">閉じる</button></div><div style="position:relative;flex:1;overflow:hidden"><video id="janVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;left:5%;right:5%;top:36%;height:20%;border:4px solid #fff;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,.20)"></div><div id="janStatusBox" style="position:absolute;left:6%;right:6%;bottom:6%;padding:12px 14px;background:rgba(17,24,39,.88);color:#fff;text-align:center;border-radius:12px"><div id="janStatusMain" style="font-size:17px;font-weight:800">カメラを準備しています…</div><div id="janStatusSub" style="font-size:12px;opacity:.9;margin-top:5px">少しお待ちください</div></div></div>`;document.body.appendChild(overlay);video=overlay.querySelector('#janVideo');overlay.querySelector('#janClose').onclick=stopScanner;setScannerStatus('カメラを準備しています…','少しお待ちください','normal');}
 function startWaitingStatus(){scanStartedAt=Date.now();updateWaitingStatus();if(statusTimer)clearInterval(statusTimer);statusTimer=setInterval(updateWaitingStatus,500);}
 function markPossibleBarcode(){if(!overlay||busy)return;setScannerStatus('バーコードを認識しています…','そのまま動かさずにお待ちください','near');}
-async function improveFocusFromVideo(){
- try{
-  const st=video&&video.srcObject;if(!st)return;const track=st.getVideoTracks()[0];if(!track)return;
-  const caps=track.getCapabilities?track.getCapabilities():{};
-  const advanced={};
-  if(caps.focusMode&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';
-  if(caps.zoom&&typeof caps.zoom.min==='number'&&typeof caps.zoom.max==='number')advanced.zoom=Math.min(caps.zoom.max,Math.max(caps.zoom.min,1));
-  if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]});
- }catch(e){}
-}
-async function scanNative(){
- detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
- createOverlay('標準カメラ読取');setScannerStatus('カメラを起動しています…','背面カメラを準備しています','normal');
- stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});
- video.srcObject=stream;await video.play();await improveFocusFromVideo();startWaitingStatus();
- const loop=async()=>{if(!video||!detector)return;try{const codes=await detector.detect(video);if(codes.length){markPossibleBarcode();await handleJan(codes[0].rawValue);return;}}catch(e){}raf=requestAnimationFrame(loop);};loop();
-}
-function loadZXing(){
- if(window.ZXingBrowser)return Promise.resolve(window.ZXingBrowser);if(zxingLoading)return zxingLoading;
- zxingLoading=new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-zxing-fallback]');if(existing){existing.addEventListener('load',()=>resolve(window.ZXingBrowser));existing.addEventListener('error',reject);return;}const s=document.createElement('script');s.src=ZXING_URL;s.async=true;s.dataset.zxingFallback='1';s.onload=()=>window.ZXingBrowser?resolve(window.ZXingBrowser):reject(new Error('ZXingを読み込めませんでした'));s.onerror=()=>reject(new Error('ZXingの取得に失敗しました'));document.head.appendChild(s);});return zxingLoading;
-}
-async function scanZXing(){
- createOverlay('互換カメラ読取');setScannerStatus('読取機能を準備しています…','初回は数秒かかる場合があります','normal');
- const ZX=await loadZXing();if(!ZX)throw new Error('ZXingが利用できません');
- setScannerStatus('カメラを起動しています…','背面カメラを準備しています','normal');
- const Reader=ZX.BrowserMultiFormatOneDReader||ZX.BrowserMultiFormatReader;if(!Reader)throw new Error('1D readerがありません');
- const reader=new Reader();
- const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false};
- zxingControls=await reader.decodeFromConstraints(constraints,video,(result,error,controls)=>{
-  if(result&&!busy){zxingControls=controls;markPossibleBarcode();const text=result.getText?result.getText():result.text||'';handleJan(text);return;}
-  if(error&&!busy){const name=String(error.name||error.constructor&&error.constructor.name||'');if(/Checksum|Format/i.test(name))markPossibleBarcode();}
- });
- stream=video&&video.srcObject||null;await improveFocusFromVideo();startWaitingStatus();
-}
-async function startScanner(){
- if(!cameraSupported){manualInput('このブラウザではカメラを利用できません。JANコードを入力してください。');return;}
- try{if(nativeSupported){await scanNative();return;}await scanZXing();}catch(e){console.warn('JAN scanner error',e);await stopScanner();manualInput('カメラ読取を開始できませんでした。JANコードを手入力してください。');}
-}
+async function improveFocusFromVideo(){try{const st=video&&video.srcObject;if(!st)return;const track=st.getVideoTracks()[0];if(!track)return;const caps=track.getCapabilities?track.getCapabilities():{};const advanced={};if(caps.focusMode&&caps.focusMode.includes('continuous'))advanced.focusMode='continuous';if(caps.zoom&&typeof caps.zoom.min==='number'&&typeof caps.zoom.max==='number')advanced.zoom=Math.min(caps.zoom.max,Math.max(caps.zoom.min,1));if(Object.keys(advanced).length)await track.applyConstraints({advanced:[advanced]});}catch(e){}}
+async function scanNative(){detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});createOverlay('標準カメラ読取');setScannerStatus('カメラを起動しています…','背面カメラを準備しています','normal');stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});video.srcObject=stream;await video.play();await improveFocusFromVideo();startWaitingStatus();const loop=async()=>{if(!video||!detector)return;try{const codes=await detector.detect(video);if(codes.length){markPossibleBarcode();await handleJan(codes[0].rawValue);return;}}catch(e){}raf=requestAnimationFrame(loop);};loop();}
+function loadZXing(){if(window.ZXingBrowser)return Promise.resolve(window.ZXingBrowser);if(zxingLoading)return zxingLoading;zxingLoading=new Promise((resolve,reject)=>{const existing=document.querySelector('script[data-zxing-fallback]');if(existing){existing.addEventListener('load',()=>resolve(window.ZXingBrowser));existing.addEventListener('error',reject);return;}const s=document.createElement('script');s.src=ZXING_URL;s.async=true;s.dataset.zxingFallback='1';s.onload=()=>window.ZXingBrowser?resolve(window.ZXingBrowser):reject(new Error('ZXingを読み込めませんでした'));s.onerror=()=>reject(new Error('ZXingの取得に失敗しました'));document.head.appendChild(s);});return zxingLoading;}
+async function scanZXing(){createOverlay('互換カメラ読取');setScannerStatus('読取機能を準備しています…','初回は数秒かかる場合があります','normal');const ZX=await loadZXing();if(!ZX)throw new Error('ZXingが利用できません');setScannerStatus('カメラを起動しています…','背面カメラを準備しています','normal');const Reader=ZX.BrowserMultiFormatOneDReader||ZX.BrowserMultiFormatReader;if(!Reader)throw new Error('1D readerがありません');const reader=new Reader();const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false};zxingControls=await reader.decodeFromConstraints(constraints,video,(result,error,controls)=>{if(result&&!busy){zxingControls=controls;markPossibleBarcode();const text=result.getText?result.getText():result.text||'';handleJan(text);return;}if(error&&!busy){const name=String(error.name||error.constructor&&error.constructor.name||'');if(/Checksum|Format/i.test(name))markPossibleBarcode();}});stream=video&&video.srcObject||null;await improveFocusFromVideo();startWaitingStatus();}
+async function startScanner(){if(!cameraSupported){manualInput('このブラウザではカメラを利用できません。JANコードを入力してください。');return;}try{if(nativeSupported){await scanNative();return;}await scanZXing();}catch(e){console.warn('JAN scanner error',e);await stopScanner();manualInput('カメラ読取を開始できませんでした。JANコードを手入力してください。');}}
 function featureLabel(){if(nativeSupported&&cameraSupported)return'JAN読取: 標準カメラ';if(cameraSupported)return'JAN読取: 互換カメラ';return'JAN読取: 手入力';}
-function hideUnusedProductFields(){
- const unitPrice=document.getElementById('productUnitPrice');
- if(unitPrice&&unitPrice.parentElement){unitPrice.parentElement.classList.add('hidden');unitPrice.parentElement.setAttribute('aria-hidden','true');}
- const spec=document.getElementById('productSpec');
- if(spec&&spec.parentElement){spec.parentElement.classList.add('hidden');spec.parentElement.setAttribute('aria-hidden','true');}
- const jan=document.getElementById('productJan');
- if(jan&&jan.parentElement)jan.parentElement.style.flex='1 1 100%';
- const supplier=document.getElementById('productSupplier');
- if(supplier&&supplier.parentElement)supplier.parentElement.style.flex='1 1 100%';
-}
-function setupProgressiveCategories(){
- const large=document.getElementById('categoryLarge'),middle=document.getElementById('categoryMiddle'),small=document.getElementById('categorySmall');
- if(!large||!middle||!small)return;
- const middleLabel=middle.previousElementSibling,smallLabel=small.previousElementSibling;
- function setVisible(el,label,visible){el.classList.toggle('hidden',!visible);if(label&&label.tagName==='LABEL')label.classList.toggle('hidden',!visible);}
- function refresh(){
-  const hasLarge=String(large.value||'').trim()!=='';
-  const hasMiddle=hasLarge&&String(middle.value||'').trim()!=='';
-  setVisible(middle,middleLabel,hasLarge);
-  setVisible(small,smallLabel,hasMiddle);
-  if(!hasLarge){middle.value='';small.value='';}
-  else if(!hasMiddle){small.value='';}
- }
- large.addEventListener('change',()=>setTimeout(refresh,0));
- middle.addEventListener('change',()=>setTimeout(refresh,0));
- document.querySelectorAll('[data-view="addProduct"]').forEach(b=>b.addEventListener('click',()=>setTimeout(refresh,0)));
- refresh();
-}
+function hideUnusedProductFields(){const unitPrice=document.getElementById('productUnitPrice');if(unitPrice&&unitPrice.parentElement){unitPrice.parentElement.classList.add('hidden');unitPrice.parentElement.setAttribute('aria-hidden','true');}const spec=document.getElementById('productSpec');if(spec&&spec.parentElement){spec.parentElement.classList.add('hidden');spec.parentElement.setAttribute('aria-hidden','true');}const jan=document.getElementById('productJan');if(jan&&jan.parentElement)jan.parentElement.style.flex='1 1 100%';const supplier=document.getElementById('productSupplier');if(supplier&&supplier.parentElement)supplier.parentElement.style.flex='1 1 100%';}
+function setupProgressiveCategories(){const large=document.getElementById('categoryLarge'),middle=document.getElementById('categoryMiddle'),small=document.getElementById('categorySmall');if(!large||!middle||!small)return;const middleLabel=middle.previousElementSibling,smallLabel=small.previousElementSibling;function setVisible(el,label,visible){el.classList.toggle('hidden',!visible);if(label&&label.tagName==='LABEL')label.classList.toggle('hidden',!visible);}function refresh(){const hasLarge=String(large.value||'').trim()!=='';const hasMiddle=hasLarge&&String(middle.value||'').trim()!=='';setVisible(middle,middleLabel,hasLarge);setVisible(small,smallLabel,hasMiddle);if(!hasLarge){middle.value='';small.value='';}else if(!hasMiddle){small.value='';}}large.addEventListener('change',()=>setTimeout(refresh,0));middle.addEventListener('change',()=>setTimeout(refresh,0));document.querySelectorAll('[data-view="addProduct"]').forEach(b=>b.addEventListener('click',()=>setTimeout(refresh,0)));refresh();}
 function loadSuppliers(){try{const v=JSON.parse(localStorage.getItem(SUPPLIER_KEY)||'[]');return Array.isArray(v)?v:[];}catch(e){return[];}}
 function saveSuppliers(v){localStorage.setItem(SUPPLIER_KEY,JSON.stringify(v));}
-async function migrateExistingSuppliers(){
- const list=loadSuppliers();const known=new Set(list.map(x=>x.name));
- try{for(const p of await getProducts()){const name=String(p.supplier||'').trim();if(name&&!known.has(name)){list.push({id:'sup_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name,active:true});known.add(name);}}}catch(e){}
- saveSuppliers(list);
-}
-function refreshSupplierSelect(keepValue=''){
- const sel=document.getElementById('productSupplier');if(!sel)return;
- const current=keepValue||sel.value||'';sel.innerHTML='';
- const empty=document.createElement('option');empty.value='';empty.textContent='未設定';sel.appendChild(empty);
- for(const s of loadSuppliers().filter(x=>x.active!==false)){const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o);}
- if(current&&!Array.from(sel.options).some(o=>o.value===current)){const o=document.createElement('option');o.value=current;o.textContent=current+'（使用停止）';sel.appendChild(o);}
- sel.value=current;
-}
-function renderSupplierList(){
- const box=document.getElementById('supplierMasterList');if(!box)return;const list=loadSuppliers();box.innerHTML='';
- if(!list.length){box.innerHTML='<div class="empty">仕入先はまだ登録されていません</div>';return;}
- for(const s of list){const row=document.createElement('div');row.className='item';row.innerHTML=`<div class="row"><div><strong></strong><div class="muted">${s.active===false?'使用停止':'使用中'}</div></div><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="ghost supplierRename" style="min-height:42px">名称変更</button><button type="button" class="secondary supplierToggle" style="min-height:42px">${s.active===false?'使用再開':'使用停止'}</button></div></div>`;row.querySelector('strong').textContent=s.name;
-  row.querySelector('.supplierRename').onclick=()=>{const name=prompt('仕入先名を変更します。',s.name);if(!name||!name.trim()||name.trim()===s.name)return;const old=s.name;s.name=name.trim();saveSuppliers(list);refreshSupplierSelect();renderSupplierList();alert(`「${old}」を「${s.name}」へ変更しました。既存商品の仕入先名は必要に応じて商品編集で確認してください。`);};
-  row.querySelector('.supplierToggle').onclick=()=>{s.active=s.active===false;saveSuppliers(list);refreshSupplierSelect();renderSupplierList();};box.appendChild(row);
- }
-}
-async function setupSupplierMaster(){
- const old=document.getElementById('productSupplier');if(!old)return;
- await migrateExistingSuppliers();
- if(old.tagName!=='SELECT'){const sel=document.createElement('select');sel.id='productSupplier';sel.setAttribute('aria-label','仕入先');old.replaceWith(sel);}
- refreshSupplierSelect();
- const settings=document.getElementById('view-settings');if(settings&&!document.getElementById('supplierMasterCard')){const card=document.createElement('div');card.id='supplierMasterCard';card.className='card';card.style.marginTop='14px';card.innerHTML='<h3>仕入先管理</h3><p class="muted">商品登録で選択する仕入先を管理します。使わなくなった仕入先は削除せず使用停止にできます。</p><label>新しい仕入先</label><div class="row"><input id="newSupplierName" placeholder="例：○○食品"><button type="button" id="addSupplierMasterBtn">追加</button></div><div id="supplierMasterList" class="list" style="margin-top:12px"></div>';settings.appendChild(card);
-  card.querySelector('#addSupplierMasterBtn').onclick=()=>{const input=card.querySelector('#newSupplierName'),name=input.value.trim();if(!name)return alert('仕入先名を入力してください。');const list=loadSuppliers();const found=list.find(x=>x.name===name);if(found){if(found.active===false){found.active=true;saveSuppliers(list);input.value='';refreshSupplierSelect();renderSupplierList();return;}return alert('同じ仕入先がすでに登録されています。');}list.push({id:'sup_'+Date.now(),name,active:true});saveSuppliers(list);input.value='';refreshSupplierSelect();renderSupplierList();};
- }
- renderSupplierList();
- document.querySelectorAll('[data-view="addProduct"]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>refreshSupplierSelect(),0)));
-}
-function addButtons(){
- hideUnusedProductFields();setupProgressiveCategories();setupSupplierMaster();
- if(document.getElementById('janScanHome'))return;const grid=document.querySelector('#view-home .grid');if(grid){const b=document.createElement('button');b.id='janScanHome';b.className='big';b.textContent='JANで商品を探す';b.onclick=startScanner;grid.insertBefore(b,grid.firstChild);}const jan=document.getElementById('productJan');if(jan){const b=document.createElement('button');b.type='button';b.className='secondary';b.style='margin-top:8px;width:100%';b.textContent='カメラでJANを読み取る';b.onclick=startScanner;jan.insertAdjacentElement('afterend',b);}const footer=document.querySelector('footer');if(footer){const s=document.createElement('div');s.style='margin-top:4px';s.textContent=featureLabel();footer.appendChild(s);}
-}
+async function migrateExistingSuppliers(){const list=loadSuppliers();const known=new Set(list.map(x=>x.name));try{for(const p of await getProducts()){const name=String(p.supplier||'').trim();if(name&&!known.has(name)){list.push({id:'sup_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name,active:true});known.add(name);}}}catch(e){}saveSuppliers(list);}
+function refreshSupplierSelect(keepValue=''){const sel=document.getElementById('productSupplier');if(!sel)return;const current=keepValue||sel.value||'';sel.innerHTML='';const empty=document.createElement('option');empty.value='';empty.textContent='未設定';sel.appendChild(empty);for(const s of loadSuppliers().filter(x=>x.active!==false)){const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o);}if(current&&!Array.from(sel.options).some(o=>o.value===current)){const o=document.createElement('option');o.value=current;o.textContent=current+'（使用停止）';sel.appendChild(o);}sel.value=current;}
+function renderSupplierList(){const box=document.getElementById('supplierMasterList');if(!box)return;const list=loadSuppliers();box.innerHTML='';if(!list.length){box.innerHTML='<div class="empty">仕入先はまだ登録されていません</div>';return;}for(const s of list){const row=document.createElement('div');row.className='item';row.innerHTML=`<div class="row"><div><strong></strong><div class="muted">${s.active===false?'使用停止':'使用中'}</div></div><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="ghost supplierRename" style="min-height:42px">名称変更</button><button type="button" class="secondary supplierToggle" style="min-height:42px">${s.active===false?'使用再開':'使用停止'}</button></div></div>`;row.querySelector('strong').textContent=s.name;row.querySelector('.supplierRename').onclick=()=>{const name=prompt('仕入先名を変更します。',s.name);if(!name||!name.trim()||name.trim()===s.name)return;const old=s.name;s.name=name.trim();saveSuppliers(list);refreshSupplierSelect();renderSupplierList();alert(`「${old}」を「${s.name}」へ変更しました。既存商品の仕入先名は必要に応じて商品編集で確認してください。`);};row.querySelector('.supplierToggle').onclick=()=>{s.active=s.active===false;saveSuppliers(list);refreshSupplierSelect();renderSupplierList();};box.appendChild(row);}}
+async function setupSupplierMaster(){const old=document.getElementById('productSupplier');if(!old)return;await migrateExistingSuppliers();if(old.tagName!=='SELECT'){const sel=document.createElement('select');sel.id='productSupplier';sel.setAttribute('aria-label','仕入先');old.replaceWith(sel);}refreshSupplierSelect();const settings=document.getElementById('view-settings');if(settings&&!document.getElementById('supplierMasterCard')){const card=document.createElement('div');card.id='supplierMasterCard';card.className='card';card.style.marginTop='14px';card.innerHTML='<h3>仕入先管理</h3><p class="muted">商品登録で選択する仕入先を管理します。使わなくなった仕入先は削除せず使用停止にできます。</p><label>新しい仕入先</label><div class="row"><input id="newSupplierName" placeholder="例：○○食品"><button type="button" id="addSupplierMasterBtn">追加</button></div><div id="supplierMasterList" class="list" style="margin-top:12px"></div>';settings.appendChild(card);card.querySelector('#addSupplierMasterBtn').onclick=()=>{const input=card.querySelector('#newSupplierName'),name=input.value.trim();if(!name)return alert('仕入先名を入力してください。');const list=loadSuppliers();const found=list.find(x=>x.name===name);if(found){if(found.active===false){found.active=true;saveSuppliers(list);input.value='';refreshSupplierSelect();renderSupplierList();return;}return alert('同じ仕入先がすでに登録されています。');}list.push({id:'sup_'+Date.now(),name,active:true});saveSuppliers(list);input.value='';refreshSupplierSelect();renderSupplierList();};}renderSupplierList();document.querySelectorAll('[data-view="addProduct"]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>refreshSupplierSelect(),0)));}
+function setupHeaderVisibility(){const header=document.querySelector('body>header');if(!header)return;const sub=header.querySelector('.sub');if(sub)sub.textContent=`${APP_VERSION} / ${APP_CHANGE} / 端末内保存`;function refresh(){const home=document.getElementById('view-home');header.classList.toggle('hidden',!(home&&!home.classList.contains('hidden')));}const observer=new MutationObserver(refresh);document.querySelectorAll('#appScreen section').forEach(s=>observer.observe(s,{attributes:true,attributeFilter:['class']}));document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setTimeout(refresh,0)));refresh();}
+function addButtons(){hideUnusedProductFields();setupProgressiveCategories();setupSupplierMaster();setupHeaderVisibility();if(document.getElementById('janScanHome'))return;const grid=document.querySelector('#view-home .grid');if(grid){const b=document.createElement('button');b.id='janScanHome';b.className='big';b.textContent='JANで商品を探す';b.onclick=startScanner;grid.insertBefore(b,grid.firstChild);}const jan=document.getElementById('productJan');if(jan){const b=document.createElement('button');b.type='button';b.className='secondary';b.style='margin-top:8px;width:100%';b.textContent='カメラでJANを読み取る';b.onclick=startScanner;jan.insertAdjacentElement('afterend',b);}const footer=document.querySelector('footer');if(footer){const s=document.createElement('div');s.style='margin-top:4px';s.textContent=featureLabel();footer.appendChild(s);}}
 window.InventoryJanScanner={start:startScanner,stop:stopScanner,features:{indexedDB:'indexedDB'in window,serviceWorker:'serviceWorker'in navigator,camera:cameraSupported,barcodeDetector:nativeSupported}};
 window.addEventListener('load',()=>setTimeout(addButtons,300));window.addEventListener('pagehide',stopScanner);
 })();
