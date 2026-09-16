@@ -102,8 +102,26 @@ function hideUnusedProductFields(){
  const supplier=document.getElementById('productSupplier');
  if(supplier&&supplier.parentElement)supplier.parentElement.style.flex='1 1 100%';
 }
+function setupProgressiveCategories(){
+ const large=document.getElementById('categoryLarge'),middle=document.getElementById('categoryMiddle'),small=document.getElementById('categorySmall');
+ if(!large||!middle||!small)return;
+ const middleLabel=middle.previousElementSibling,smallLabel=small.previousElementSibling;
+ function setVisible(el,label,visible){el.classList.toggle('hidden',!visible);if(label&&label.tagName==='LABEL')label.classList.toggle('hidden',!visible);}
+ function refresh(){
+  const hasLarge=String(large.value||'').trim()!=='';
+  const hasMiddle=hasLarge&&String(middle.value||'').trim()!=='';
+  setVisible(middle,middleLabel,hasLarge);
+  setVisible(small,smallLabel,hasMiddle);
+  if(!hasLarge){middle.value='';small.value='';}
+  else if(!hasMiddle){small.value='';}
+ }
+ large.addEventListener('change',()=>setTimeout(refresh,0));
+ middle.addEventListener('change',()=>setTimeout(refresh,0));
+ document.querySelectorAll('[data-view="addProduct"]').forEach(b=>b.addEventListener('click',()=>setTimeout(refresh,0)));
+ refresh();
+}
 function addButtons(){
- hideUnusedProductFields();
+ hideUnusedProductFields();setupProgressiveCategories();
  if(document.getElementById('janScanHome'))return;const grid=document.querySelector('#view-home .grid');if(grid){const b=document.createElement('button');b.id='janScanHome';b.className='big';b.textContent='JANで商品を探す';b.onclick=startScanner;grid.insertBefore(b,grid.firstChild);}const jan=document.getElementById('productJan');if(jan){const b=document.createElement('button');b.type='button';b.className='secondary';b.style='margin-top:8px;width:100%';b.textContent='カメラでJANを読み取る';b.onclick=startScanner;jan.insertAdjacentElement('afterend',b);}const footer=document.querySelector('footer');if(footer){const s=document.createElement('div');s.style='margin-top:4px';s.textContent=featureLabel();footer.appendChild(s);}
 }
 window.InventoryJanScanner={start:startScanner,stop:stopScanner,features:{indexedDB:'indexedDB'in window,serviceWorker:'serviceWorker'in navigator,camera:cameraSupported,barcodeDetector:nativeSupported}};
