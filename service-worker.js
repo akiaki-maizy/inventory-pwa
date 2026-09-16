@@ -1,5 +1,5 @@
-const CACHE_NAME = 'inventory-pwa-v1-13-stable-home';
-const CURRENT_VERSION = 'MVP Ver.1.13 / 賞味期限ロール小型化・今日を初期値 / 端末内保存';
+const CACHE_NAME = 'inventory-pwa-v1-14-single-expiry-row';
+const CURRENT_VERSION = 'MVP Ver.1.14 / 賞味期限入力1枠化・安定化 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
@@ -11,8 +11,6 @@ async function fixedIndexResponse(request){
   if(!html.includes('case-stock.js'))html=html.replace('</body>','<script src="./case-stock.js"></script>\n</body>');
   if(!html.includes('date-wheel.js'))html=html.replace('</body>','<script src="./date-wheel.js"></script>\n</body>');
   html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,CURRENT_VERSION);
-  // The original HTML still contains the old seven-button home grid. Hide it before first paint;
-  // jan-scanner.js builds the current task-group home UI after startup.
   html=html.replace('<section id="view-home">','<section id="view-home" class="home-enhanced-pending">');
   html=html.replace('</style>','\n.home-enhanced-pending > .grid:first-of-type{display:none!important}\n</style>');
   const guard=`<script>(()=>{const V=${JSON.stringify(CURRENT_VERSION)};const apply=()=>{const s=document.querySelector('header .sub');if(s&&s.textContent!==V)s.textContent=V;};apply();new MutationObserver(apply).observe(document.documentElement,{subtree:true,childList:true,characterData:true});})();<\/script>`;
