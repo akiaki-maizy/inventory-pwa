@@ -1,6 +1,6 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-startup-recovery';
-const CURRENT_VERSION = 'MVP Ver.1.14 / 起動復旧 / 端末内保存';
-const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
+const CACHE_NAME = 'inventory-pwa-v1-15-location-order';
+const CURRENT_VERSION = 'MVP Ver.1.15 / 棚表示順変更 / 端末内保存';
+const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js','./location-order.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
 async function fixedIndexResponse(request){
@@ -10,6 +10,7 @@ async function fixedIndexResponse(request){
   if(!html.includes('jan-scanner.js'))html=html.replace('</body>','<script src="./jan-scanner.js"></script>\n</body>');
   if(!html.includes('case-stock.js'))html=html.replace('</body>','<script src="./case-stock.js"></script>\n</body>');
   if(!html.includes('date-wheel.js'))html=html.replace('</body>','<script src="./date-wheel.js"></script>\n</body>');
+  if(!html.includes('location-order.js'))html=html.replace('</body>','<script src="./location-order.js"></script>\n</body>');
   html=html.replace(/MVP Ver\.1\.[0-9]+(?: \/ [^<]*)? \/ 端末内保存/g,CURRENT_VERSION);
   const oldQuickAdd="document.getElementById('quickAddLot').onclick=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
   const newQuickAdd="window.openQuickAddLot=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
@@ -35,7 +36,7 @@ self.addEventListener('fetch',event=>{
  const url=new URL(event.request.url);
  const isIndex=url.origin===self.location.origin&&(url.pathname.endsWith('/inventory-pwa/')||url.pathname.endsWith('/inventory-pwa/index.html'));
  if(isIndex){event.respondWith(fixedIndexResponse(event.request));return;}
- if(url.pathname.endsWith('/jan-scanner.js')||url.pathname.endsWith('/case-stock.js')||url.pathname.endsWith('/date-wheel.js')){
+ if(url.pathname.endsWith('/jan-scanner.js')||url.pathname.endsWith('/case-stock.js')||url.pathname.endsWith('/date-wheel.js')||url.pathname.endsWith('/location-order.js')){
    event.respondWith(fetch(event.request,{cache:'no-store'}).then(response=>{const clone=response.clone();caches.open(CACHE_NAME).then(cache=>cache.put(event.request,clone));return response;}).catch(()=>caches.match(event.request)));
    return;
  }
