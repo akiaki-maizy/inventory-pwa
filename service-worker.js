@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-rollback-home';
+const CACHE_NAME = 'inventory-pwa-v1-14-decouple-quickadd';
 const CURRENT_VERSION = 'MVP Ver.1.14 / 賞味期限入力1枠化・安定化 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
@@ -11,9 +11,16 @@ async function fixedIndexResponse(request){
   if(!html.includes('case-stock.js'))html=html.replace('</body>','<script src="./case-stock.js"></script>\n</body>');
   if(!html.includes('date-wheel.js'))html=html.replace('</body>','<script src="./date-wheel.js"></script>\n</body>');
   html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,CURRENT_VERSION);
-  // Keep the legacy home controls in the DOM because the original inline startup code
-  // still binds #quickAddLot before init(). Hide them before paint; jan-scanner.js then
-  // creates the field-tested grouped home UI after startup.
+
+  // Stage 1 of removing the legacy home markup: make the quick-add behavior a named
+  // function and bind the old button only when it exists. This preserves current UI
+  // behavior while removing the startup crash dependency on #quickAddLot.
+  const oldQuickAdd="document.getElementById('quickAddLot').onclick=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
+  const newQuickAdd="window.openQuickAddLot=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};const quickAddLotButton=document.getElementById('quickAddLot');if(quickAddLotButton)quickAddLotButton.onclick=window.openQuickAddLot;";
+  if(html.includes(oldQuickAdd))html=html.replace(oldQuickAdd,newQuickAdd);
+
+  // Keep the legacy home controls for this stage, but hide them before paint.
+  // jan-scanner.js continues to create the already field-tested grouped home UI.
   html=html.replace('<section id="view-home">','<section id="view-home" class="home-enhanced-pending">');
   html=html.replace('</style>','\n.home-enhanced-pending > .grid:first-of-type{display:none!important}\n</style>');
   const guard=`<script>(()=>{const V=${JSON.stringify(CURRENT_VERSION)};const apply=()=>{const s=document.querySelector('header .sub');if(s&&s.textContent!==V)s.textContent=V;};apply();new MutationObserver(apply).observe(document.documentElement,{subtree:true,childList:true,characterData:true});})();<\/script>`;
