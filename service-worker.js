@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-quickadd-bridge';
+const CACHE_NAME = 'inventory-pwa-v1-14-direct-quickadd';
 const CURRENT_VERSION = 'MVP Ver.1.14 / 賞味期限入力1枠化・安定化 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
@@ -12,14 +12,12 @@ async function fixedIndexResponse(request){
   if(!html.includes('date-wheel.js'))html=html.replace('</body>','<script src="./date-wheel.js"></script>\n</body>');
   html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,CURRENT_VERSION);
 
+  // Expose quick-add as an action instead of depending on a home-screen button.
   const oldQuickAdd="document.getElementById('quickAddLot').onclick=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
-  const newQuickAdd="window.openQuickAddLot=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};const quickAddLotButton=document.getElementById('quickAddLot');if(quickAddLotButton)quickAddLotButton.onclick=window.openQuickAddLot;";
+  const newQuickAdd="window.openQuickAddLot=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
   if(html.includes(oldQuickAdd))html=html.replace(oldQuickAdd,newQuickAdd);
 
-  // Remove the visible legacy home grid, but keep one hidden compatibility bridge.
-  // The current grouped-home script still dispatches quick-add through #quickAddLot.
-  // This bridge is intentionally temporary and will disappear when jan-scanner.js is
-  // changed to call openQuickAddLot() directly.
+  // Remove the obsolete seven-button home grid completely.
   const legacyHome=`<div class="grid">
         <button class="big" data-view="inventory">在庫を見る</button>
         <button class="big" id="quickAddLot">入荷・期限登録</button>
@@ -29,7 +27,7 @@ async function fixedIndexResponse(request){
         <button class="big" data-view="addProduct">＋ 商品登録</button>
         <button class="big" data-view="settings">設定</button>
       </div>`;
-  if(html.includes(legacyHome))html=html.replace(legacyHome,'<button id="quickAddLot" type="button" class="hidden" aria-hidden="true" tabindex="-1">入荷・期限登録</button>');
+  if(html.includes(legacyHome))html=html.replace(legacyHome,'');
 
   const guard=`<script>(()=>{const V=${JSON.stringify(CURRENT_VERSION)};const apply=()=>{const s=document.querySelector('header .sub');if(s&&s.textContent!==V)s.textContent=V;};apply();new MutationObserver(apply).observe(document.documentElement,{subtree:true,childList:true,characterData:true});})();<\/script>`;
   html=html.replace('</body>',guard+'\n</body>');
