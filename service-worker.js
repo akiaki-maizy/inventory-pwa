@@ -1,5 +1,5 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-receiving-decoupled';
-const CURRENT_VERSION = 'MVP Ver.1.14 / 入荷処理整理 / 端末内保存';
+const CACHE_NAME = 'inventory-pwa-v1-14-remove-legacy-receiving';
+const CURRENT_VERSION = 'MVP Ver.1.14 / 旧入荷UI撤去 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
@@ -24,6 +24,14 @@ async function fixedIndexResponse(request){
         <button class="big" data-view="settings">設定</button>
       </div>`;
   if(html.includes(legacyHome))html=html.replace(legacyHome,'');
+  const legacyReceiving=`<hr>
+        <h3>入荷・賞味期限を追加</h3>
+        <div class="row">
+          <div><label>数量</label><input id="lotQty" type="number" min="1" inputmode="numeric"></div>
+          <div><label>賞味期限</label><input id="lotExpiry" type="date"></div>
+        </div>
+        <div style="margin-top:12px"><button id="addLotBtn">追加登録</button></div>`;
+  if(html.includes(legacyReceiving))html=html.replace(legacyReceiving,'');
   const guard=`<script>(()=>{const V=${JSON.stringify(CURRENT_VERSION)};const apply=()=>{const s=document.querySelector('header .sub');if(s&&s.textContent!==V)s.textContent=V;};apply();new MutationObserver(apply).observe(document.documentElement,{subtree:true,childList:true,characterData:true});})();<\/script>`;
   html=html.replace('</body>',guard+'\n</body>');
   const response=new Response(html,{status:network.status,statusText:network.statusText,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'}});
