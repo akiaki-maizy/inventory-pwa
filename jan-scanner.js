@@ -92,7 +92,16 @@ async function startScanner(){
  try{if(nativeSupported){await scanNative();return;}await scanZXing();}catch(e){console.warn('JAN scanner error',e);await stopScanner();manualInput('カメラ読取を開始できませんでした。JANコードを手入力してください。');}
 }
 function featureLabel(){if(nativeSupported&&cameraSupported)return'JAN読取: 標準カメラ';if(cameraSupported)return'JAN読取: 互換カメラ';return'JAN読取: 手入力';}
+function hideReferenceUnitPrice(){
+ const input=document.getElementById('productUnitPrice');
+ if(!input)return;
+ const field=input.parentElement;
+ if(field){field.classList.add('hidden');field.setAttribute('aria-hidden','true');}
+ const supplier=document.getElementById('productSupplier');
+ if(supplier&&supplier.parentElement)supplier.parentElement.style.flex='1 1 100%';
+}
 function addButtons(){
+ hideReferenceUnitPrice();
  if(document.getElementById('janScanHome'))return;const grid=document.querySelector('#view-home .grid');if(grid){const b=document.createElement('button');b.id='janScanHome';b.className='big';b.textContent='JANで商品を探す';b.onclick=startScanner;grid.insertBefore(b,grid.firstChild);}const jan=document.getElementById('productJan');if(jan){const b=document.createElement('button');b.type='button';b.className='secondary';b.style='margin-top:8px;width:100%';b.textContent='カメラでJANを読み取る';b.onclick=startScanner;jan.insertAdjacentElement('afterend',b);}const footer=document.querySelector('footer');if(footer){const s=document.createElement('div');s.style='margin-top:4px';s.textContent=featureLabel();footer.appendChild(s);}
 }
 window.InventoryJanScanner={start:startScanner,stop:stopScanner,features:{indexedDB:'indexedDB'in window,serviceWorker:'serviceWorker'in navigator,camera:cameraSupported,barcodeDetector:nativeSupported}};
