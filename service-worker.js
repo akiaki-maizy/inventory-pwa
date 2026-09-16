@@ -1,4 +1,5 @@
-const CACHE_NAME = 'inventory-pwa-v1-13-slim-expiry-wheel';
+const CACHE_NAME = 'inventory-pwa-v1-13-stable-version';
+const CURRENT_VERSION = 'MVP Ver.1.13 / 賞味期限ロール小型化・今日を初期値 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
@@ -9,8 +10,10 @@ async function fixedIndexResponse(request){
   if(!html.includes('jan-scanner.js'))html=html.replace('</body>','<script src="./jan-scanner.js"></script>\n</body>');
   if(!html.includes('case-stock.js'))html=html.replace('</body>','<script src="./case-stock.js"></script>\n</body>');
   if(!html.includes('date-wheel.js'))html=html.replace('</body>','<script src="./date-wheel.js"></script>\n</body>');
-  html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,'MVP Ver.1.13 / 賞味期限ロール小型化・今日を初期値 / 端末内保存');
-  const response=new Response(html,{status:network.status,statusText:network.statusText,headers:{'Content-Type':'text/html; charset=utf-8'}});
+  html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,CURRENT_VERSION);
+  const guard=`<script>(()=>{const V=${JSON.stringify(CURRENT_VERSION)};const apply=()=>{const s=document.querySelector('header .sub');if(s&&s.textContent!==V)s.textContent=V;};apply();new MutationObserver(apply).observe(document.documentElement,{subtree:true,childList:true,characterData:true});})();<\/script>`;
+  html=html.replace('</body>',guard+'\n</body>');
+  const response=new Response(html,{status:network.status,statusText:network.statusText,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'}});
   const cache=await caches.open(CACHE_NAME);cache.put('./index.html',response.clone());return response;
  }catch(e){return(await caches.match('./index.html'))||new Response('アプリを読み込めませんでした。',{status:503});}
 }
