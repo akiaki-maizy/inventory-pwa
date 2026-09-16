@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-direct-quickadd';
+const CACHE_NAME = 'inventory-pwa-v1-14-version-source';
 const CURRENT_VERSION = 'MVP Ver.1.14 / 賞味期限入力1枠化・安定化 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
@@ -10,14 +10,16 @@ async function fixedIndexResponse(request){
   if(!html.includes('jan-scanner.js'))html=html.replace('</body>','<script src="./jan-scanner.js"></script>\n</body>');
   if(!html.includes('case-stock.js'))html=html.replace('</body>','<script src="./case-stock.js"></script>\n</body>');
   if(!html.includes('date-wheel.js'))html=html.replace('</body>','<script src="./date-wheel.js"></script>\n</body>');
-  html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,CURRENT_VERSION);
+
+  // Until index.html is safely split/refactored, normalize its old static label here.
+  html=html.replace(/MVP Ver\.1\.[0-9]+(?: \/ [^<]*)? \/ 端末内保存/g,CURRENT_VERSION);
 
   // Expose quick-add as an action instead of depending on a home-screen button.
   const oldQuickAdd="document.getElementById('quickAddLot').onclick=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
   const newQuickAdd="window.openQuickAddLot=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
   if(html.includes(oldQuickAdd))html=html.replace(oldQuickAdd,newQuickAdd);
 
-  // Remove the obsolete seven-button home grid completely.
+  // Remove the obsolete seven-button home grid completely from the delivered page.
   const legacyHome=`<div class="grid">
         <button class="big" data-view="inventory">在庫を見る</button>
         <button class="big" id="quickAddLot">入荷・期限登録</button>
