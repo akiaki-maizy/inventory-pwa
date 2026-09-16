@@ -1,63 +1,40 @@
 (()=>{
 'use strict';
-let activeParentId=null;
-
-function sortLocations(a,b){
-  return (Number(a.order)||0)-(Number(b.order)||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');
+const SORT_KEY='inventory-pwa-location-sort-v2';
+const NUMBER_KEY='inventory-pwa-location-numbers-v1';
+const MODES=[['numberAsc','番号 昇順'],['numberDesc','番号 降順'],['nameAsc','名前 昇順'],['nameDesc','名前 降順'],['registered','登録順']];
+function loadMode(){return localStorage.getItem(SORT_KEY)||'numberAsc';}
+function saveMode(v){localStorage.setItem(SORT_KEY,v);}
+function loadNumbers(){try{const v=JSON.parse(localStorage.getItem(NUMBER_KEY)||'{}');return v&&typeof v==='object'?v:{};}catch(e){return{};}}
+function saveNumbers(v){localStorage.setItem(NUMBER_KEY,JSON.stringify(v));}
+function numberOf(loc,map){const raw=map[loc.id];if(raw===undefined||raw===null||raw==='')return Number.POSITIVE_INFINITY;const n=Number(raw);return Number.isFinite(n)?n:Number.POSITIVE_INFINITY;}
+function byName(a,b){return String(a.name||'').localeCompare(String(b.name||''),'ja',{numeric:true,sensitivity:'base'});}
+function sortLocations(list,mode=loadMode()){
+ const map=loadNumbers();return [...list].sort((a,b)=>{
+  if(mode==='numberAsc')return numberOf(a,map)-numberOf(b,map)||byName(a,b);
+  if(mode==='numberDesc')return numberOf(b,map)-numberOf(a,map)||byName(a,b);
+  if(mode==='nameAsc')return byName(a,b);
+  if(mode==='nameDesc')return byName(b,a);
+  return (Number(a.order)||0)-(Number(b.order)||0)||byName(a,b);
+ });
 }
-async function orderedLocations(parentId){
-  const all=await getAll('locations');
-  return all.filter(x=>(x.parentId||null)===(parentId||null)).sort(sortLocations);
+async function renderHomeSorted(){
+ const box=document.getElementById('homeLocationList');if(!box||typeof getAll!=='function')return;
+ const roots=sortLocations((await getAll('locations')).filter(x=>x.active!==false&&!x.parentId));const map=loadNumbers();box.innerHTML='';
+ if(!roots.length){box.innerHTML='<div class="empty">保管場所がありません</div>';return;}
+ for(const loc of roots){const b=document.createElement('button');b.className='big';const n=map[loc.id];b.textContent=(n!==undefined&&n!=='')?`${n}. ${loc.name}`:loc.name;b.onclick=()=>{if(typeof window.openLocationInventory==='function')window.openLocationInventory(loc.id);else if(typeof showView==='function')showView('inventory');};box.appendChild(b);}
 }
-async function moveLocation(id,direction){
-  const target=await getOne('locations',id);if(!target)return;
-  const siblings=await orderedLocations(target.parentId||null);
-  const index=siblings.findIndex(x=>x.id===id),next=index+direction;
-  if(index<0||next<0||next>=siblings.length)return;
-  [siblings[index],siblings[next]]=[siblings[next],siblings[index]];
-  for(let i=0;i<siblings.length;i++){
-    siblings[i].order=(i+1)*1000;
-    await put('locations',siblings[i]);
-  }
-  if(target.parentId){if(typeof window.renderChildLocations==='function')await window.renderChildLocations();}
-  else{if(typeof window.renderLocations==='function')await window.renderLocations();}
-  if(typeof window.renderHome==='function')await window.renderHome();
-  await reorderHomeButtons();
+function setupHomeSort(){
+ const box=document.getElementById('homeLocationList');if(!box||document.getElementById('homeLocationSortBar'))return;
+ const bar=document.createElement('div');bar.id='homeLocationSortBar';bar.className='card';bar.style.margin='8px 0 12px';bar.innerHTML='<label style="margin-top:0">並べ替え</label><select id="homeLocationSortSelect"></select>';
+ const sel=bar.querySelector('select');for(const [v,t] of MODES){const o=document.createElement('option');o.value=v;o.textContent=t;sel.appendChild(o);}sel.value=loadMode();sel.onchange=()=>{saveMode(sel.value);renderHomeSorted();};
+ const heading=box.previousElementSibling;if(heading)heading.insertAdjacentElement('afterend',bar);else box.parentElement.insertBefore(bar,box);renderHomeSorted();
 }
-function orderButtons(loc,index,total){
-  const wrap=document.createElement('div');wrap.className='row locationOrderControls';wrap.style.marginTop='8px';
-  const up=document.createElement('button');up.type='button';up.className='ghost';up.textContent='↑ 上へ';up.disabled=index===0;up.onclick=()=>moveLocation(loc.id,-1);
-  const down=document.createElement('button');down.type='button';down.className='ghost';down.textContent='↓ 下へ';down.disabled=index===total-1;down.onclick=()=>moveLocation(loc.id,1);
-  wrap.append(up,down);return wrap;
+async function addNumberEditors(){
+ const box=document.getElementById('locationList');if(!box||typeof getAll!=='function')return;const roots=(await getAll('locations')).filter(x=>!x.parentId).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));const items=[...box.querySelectorAll(':scope > .item')],map=loadNumbers();
+ items.forEach((item,i)=>{const loc=roots[i];if(!loc||item.querySelector('.locationDisplayNumber'))return;const row=document.createElement('div');row.style.marginTop='8px';row.innerHTML='<label style="margin:0 0 5px">表示番号（任意）</label><input class="locationDisplayNumber" type="number" inputmode="numeric" placeholder="例：10">';const input=row.querySelector('input');input.value=map[loc.id]??'';input.onchange=()=>{const m=loadNumbers();if(input.value==='')delete m[loc.id];else m[loc.id]=Number(input.value);saveNumbers(m);renderHomeSorted();};item.appendChild(row);});
 }
-async function reorderHomeButtons(){
-  const box=document.getElementById('homeLocationList');if(!box)return;
-  const roots=(await orderedLocations(null)).filter(x=>x.active!==false);
-  const buttons=[...box.children];
-  roots.forEach(loc=>{
-    const button=buttons.find(b=>String(b.textContent||'').trim()===String(loc.name||'').trim());
-    if(button)box.appendChild(button);
-  });
-}
-const originalOpenLocation=window.openLocation;
-if(typeof originalOpenLocation==='function')window.openLocation=async function(id){activeParentId=id;return originalOpenLocation(id);};
-const originalRenderLocations=window.renderLocations;
-if(typeof originalRenderLocations==='function')window.renderLocations=async function(){
-  await originalRenderLocations();
-  const roots=await orderedLocations(null),box=document.getElementById('locationList');if(!box)return;
-  const items=[...box.querySelectorAll(':scope > .item')];
-  items.forEach((item,i)=>{if(roots[i]&&!item.querySelector('.locationOrderControls'))item.appendChild(orderButtons(roots[i],i,roots.length));});
-};
-const originalRenderChildLocations=window.renderChildLocations;
-if(typeof originalRenderChildLocations==='function')window.renderChildLocations=async function(){
-  await originalRenderChildLocations();
-  if(!activeParentId)return;
-  const children=await orderedLocations(activeParentId),box=document.getElementById('childLocationList');if(!box)return;
-  const items=[...box.querySelectorAll(':scope > .item')];
-  items.forEach((item,i)=>{if(children[i]&&!item.querySelector('.locationOrderControls'))item.appendChild(orderButtons(children[i],i,children.length));});
-};
-const originalRenderHome=window.renderHome;
-if(typeof originalRenderHome==='function')window.renderHome=async function(){const result=await originalRenderHome();await reorderHomeButtons();return result;};
-window.InventoryLocationOrder={move:moveLocation,refresh:reorderHomeButtons};
-window.addEventListener('load',()=>setTimeout(reorderHomeButtons,500));
+function setupNumberEditors(){const box=document.getElementById('locationList');if(!box)return;new MutationObserver(()=>setTimeout(addNumberEditors,0)).observe(box,{childList:true});setTimeout(addNumberEditors,300);}
+window.InventoryLocationSort={sort:sortLocations,render:renderHomeSorted};
+window.addEventListener('load',()=>setTimeout(()=>{setupHomeSort();setupNumberEditors();},500));
 })();
