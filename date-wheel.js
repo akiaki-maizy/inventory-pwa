@@ -17,12 +17,9 @@ function enhance(input){if(!input||input.dataset.wheelEnhanced)return;input.data
  [yy.s,mm.s,dd.s].forEach(center);sync();
 }
 function scan(root=document){root.querySelectorAll('input[type="date"],input[data-wheel-enhanced="1"]').forEach(enhance);document.querySelectorAll('.dateQuick,.dateSelectedText').forEach(x=>x.remove());}
-function normalizeMultiExpiry(containerId,rowClass,addButtonId){const box=document.getElementById(containerId),add=document.getElementById(addButtonId);if(!box||!add||box.dataset.userAdding==='1')return;const rows=[...box.querySelectorAll(':scope > .'+rowClass)];if(rows.length!==3)return;const untouched=rows.every(r=>[...r.querySelectorAll('.stockCases,.stockLoose')].every(i=>!i.value||Number(i.value)===0));if(!untouched)return;rows.slice(1).forEach(r=>r.remove());}
-function normalizeAll(){normalizeMultiExpiry('initialStockRows','initialStockRow','initialAddRow');normalizeMultiExpiry('batchReceiveRows','batchReceiveRow','batchAddRow');}
 function init(){
- document.addEventListener('click',e=>{const b=e.target.closest('#initialAddRow,#batchAddRow');if(!b)return;const box=document.getElementById(b.id==='initialAddRow'?'initialStockRows':'batchReceiveRows');if(box){box.dataset.userAdding='1';setTimeout(()=>delete box.dataset.userAdding,50);}},true);
- normalizeAll();scan();
- const obs=new MutationObserver(ms=>{for(const m of ms)for(const node of m.addedNodes)if(node.nodeType===1)scan(node);normalizeAll();});
+ scan();
+ const obs=new MutationObserver(ms=>{for(const m of ms)for(const node of m.addedNodes)if(node.nodeType===1)scan(node);});
  obs.observe(document.body,{childList:true,subtree:true});
 }
 window.addEventListener('load',()=>setTimeout(init,900));
