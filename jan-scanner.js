@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 const ZXING_URL='https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js';
+const SUPPLIER_KEY='inventory-pwa-suppliers-v1';
 const nativeSupported='BarcodeDetector' in window;
 const cameraSupported=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 let detector=null,stream=null,raf=null,overlay=null,video=null,busy=false,zxingControls=null,zxingLoading=null,scanHintTimer=null,statusTimer=null,scanStartedAt=0,lastStatusKey='';
@@ -120,8 +121,42 @@ function setupProgressiveCategories(){
  document.querySelectorAll('[data-view="addProduct"]').forEach(b=>b.addEventListener('click',()=>setTimeout(refresh,0)));
  refresh();
 }
+function loadSuppliers(){try{const v=JSON.parse(localStorage.getItem(SUPPLIER_KEY)||'[]');return Array.isArray(v)?v:[];}catch(e){return[];}}
+function saveSuppliers(v){localStorage.setItem(SUPPLIER_KEY,JSON.stringify(v));}
+async function migrateExistingSuppliers(){
+ const list=loadSuppliers();const known=new Set(list.map(x=>x.name));
+ try{for(const p of await getProducts()){const name=String(p.supplier||'').trim();if(name&&!known.has(name)){list.push({id:'sup_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name,active:true});known.add(name);}}}catch(e){}
+ saveSuppliers(list);
+}
+function refreshSupplierSelect(keepValue=''){
+ const sel=document.getElementById('productSupplier');if(!sel)return;
+ const current=keepValue||sel.value||'';sel.innerHTML='';
+ const empty=document.createElement('option');empty.value='';empty.textContent='未設定';sel.appendChild(empty);
+ for(const s of loadSuppliers().filter(x=>x.active!==false)){const o=document.createElement('option');o.value=s.name;o.textContent=s.name;sel.appendChild(o);}
+ if(current&&!Array.from(sel.options).some(o=>o.value===current)){const o=document.createElement('option');o.value=current;o.textContent=current+'（使用停止）';sel.appendChild(o);}
+ sel.value=current;
+}
+function renderSupplierList(){
+ const box=document.getElementById('supplierMasterList');if(!box)return;const list=loadSuppliers();box.innerHTML='';
+ if(!list.length){box.innerHTML='<div class="empty">仕入先はまだ登録されていません</div>';return;}
+ for(const s of list){const row=document.createElement('div');row.className='item';row.innerHTML=`<div class="row"><div><strong></strong><div class="muted">${s.active===false?'使用停止':'使用中'}</div></div><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="ghost supplierRename" style="min-height:42px">名称変更</button><button type="button" class="secondary supplierToggle" style="min-height:42px">${s.active===false?'使用再開':'使用停止'}</button></div></div>`;row.querySelector('strong').textContent=s.name;
+  row.querySelector('.supplierRename').onclick=()=>{const name=prompt('仕入先名を変更します。',s.name);if(!name||!name.trim()||name.trim()===s.name)return;const old=s.name;s.name=name.trim();saveSuppliers(list);refreshSupplierSelect();renderSupplierList();alert(`「${old}」を「${s.name}」へ変更しました。既存商品の仕入先名は必要に応じて商品編集で確認してください。`);};
+  row.querySelector('.supplierToggle').onclick=()=>{s.active=s.active===false;saveSuppliers(list);refreshSupplierSelect();renderSupplierList();};box.appendChild(row);
+ }
+}
+async function setupSupplierMaster(){
+ const old=document.getElementById('productSupplier');if(!old)return;
+ await migrateExistingSuppliers();
+ if(old.tagName!=='SELECT'){const sel=document.createElement('select');sel.id='productSupplier';sel.setAttribute('aria-label','仕入先');old.replaceWith(sel);}
+ refreshSupplierSelect();
+ const settings=document.getElementById('view-settings');if(settings&&!document.getElementById('supplierMasterCard')){const card=document.createElement('div');card.id='supplierMasterCard';card.className='card';card.style.marginTop='14px';card.innerHTML='<h3>仕入先管理</h3><p class="muted">商品登録で選択する仕入先を管理します。使わなくなった仕入先は削除せず使用停止にできます。</p><label>新しい仕入先</label><div class="row"><input id="newSupplierName" placeholder="例：○○食品"><button type="button" id="addSupplierMasterBtn">追加</button></div><div id="supplierMasterList" class="list" style="margin-top:12px"></div>';settings.appendChild(card);
+  card.querySelector('#addSupplierMasterBtn').onclick=()=>{const input=card.querySelector('#newSupplierName'),name=input.value.trim();if(!name)return alert('仕入先名を入力してください。');const list=loadSuppliers();const found=list.find(x=>x.name===name);if(found){if(found.active===false){found.active=true;saveSuppliers(list);input.value='';refreshSupplierSelect();renderSupplierList();return;}return alert('同じ仕入先がすでに登録されています。');}list.push({id:'sup_'+Date.now(),name,active:true});saveSuppliers(list);input.value='';refreshSupplierSelect();renderSupplierList();};
+ }
+ renderSupplierList();
+ document.querySelectorAll('[data-view="addProduct"]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>refreshSupplierSelect(),0)));
+}
 function addButtons(){
- hideUnusedProductFields();setupProgressiveCategories();
+ hideUnusedProductFields();setupProgressiveCategories();setupSupplierMaster();
  if(document.getElementById('janScanHome'))return;const grid=document.querySelector('#view-home .grid');if(grid){const b=document.createElement('button');b.id='janScanHome';b.className='big';b.textContent='JANで商品を探す';b.onclick=startScanner;grid.insertBefore(b,grid.firstChild);}const jan=document.getElementById('productJan');if(jan){const b=document.createElement('button');b.type='button';b.className='secondary';b.style='margin-top:8px;width:100%';b.textContent='カメラでJANを読み取る';b.onclick=startScanner;jan.insertAdjacentElement('afterend',b);}const footer=document.querySelector('footer');if(footer){const s=document.createElement('div');s.style='margin-top:4px';s.textContent=featureLabel();footer.appendChild(s);}
 }
 window.InventoryJanScanner={start:startScanner,stop:stopScanner,features:{indexedDB:'indexedDB'in window,serviceWorker:'serviceWorker'in navigator,camera:cameraSupported,barcodeDetector:nativeSupported}};
