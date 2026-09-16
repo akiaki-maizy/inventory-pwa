@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-version-source';
+const CACHE_NAME = 'inventory-pwa-v1-14-native-one-row';
 const CURRENT_VERSION = 'MVP Ver.1.14 / 賞味期限入力1枠化・安定化 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
