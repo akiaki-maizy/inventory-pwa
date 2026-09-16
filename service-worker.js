@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-decouple-quickadd';
+const CACHE_NAME = 'inventory-pwa-v1-14-remove-legacy-home';
 const CURRENT_VERSION = 'MVP Ver.1.14 / 賞味期限入力1枠化・安定化 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
@@ -12,17 +12,25 @@ async function fixedIndexResponse(request){
   if(!html.includes('date-wheel.js'))html=html.replace('</body>','<script src="./date-wheel.js"></script>\n</body>');
   html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,CURRENT_VERSION);
 
-  // Stage 1 of removing the legacy home markup: make the quick-add behavior a named
-  // function and bind the old button only when it exists. This preserves current UI
-  // behavior while removing the startup crash dependency on #quickAddLot.
+  // Quick-add no longer requires the legacy #quickAddLot button to exist at startup.
   const oldQuickAdd="document.getElementById('quickAddLot').onclick=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};";
   const newQuickAdd="window.openQuickAddLot=async()=>{const products=(await getAll('products')).filter(x=>x.active!==false);if(!products.length){alert('先に商品を登録してください');return showView('addProduct')}showView('inventory')};const quickAddLotButton=document.getElementById('quickAddLot');if(quickAddLotButton)quickAddLotButton.onclick=window.openQuickAddLot;";
   if(html.includes(oldQuickAdd))html=html.replace(oldQuickAdd,newQuickAdd);
 
-  // Keep the legacy home controls for this stage, but hide them before paint.
-  // jan-scanner.js continues to create the already field-tested grouped home UI.
-  html=html.replace('<section id="view-home">','<section id="view-home" class="home-enhanced-pending">');
-  html=html.replace('</style>','\n.home-enhanced-pending > .grid:first-of-type{display:none!important}\n</style>');
+  // Stage 2: remove the obsolete seven-button home grid from delivered markup.
+  // jan-scanner.js creates the field-tested grouped home menu. Other data-view buttons
+  // are delegated globally, so they do not depend on these obsolete home copies.
+  const legacyHome=`<div class="grid">
+        <button class="big" data-view="inventory">在庫を見る</button>
+        <button class="big" id="quickAddLot">入荷・期限登録</button>
+        <button class="big" data-view="expiry">賞味期限を確認</button>
+        <button class="big" data-view="stocktake">棚卸する</button>
+        <button class="big" data-view="allHistory">全体履歴を見る</button>
+        <button class="big" data-view="addProduct">＋ 商品登録</button>
+        <button class="big" data-view="settings">設定</button>
+      </div>`;
+  if(html.includes(legacyHome))html=html.replace(legacyHome,'');
+
   const guard=`<script>(()=>{const V=${JSON.stringify(CURRENT_VERSION)};const apply=()=>{const s=document.querySelector('header .sub');if(s&&s.textContent!==V)s.textContent=V;};apply();new MutationObserver(apply).observe(document.documentElement,{subtree:true,childList:true,characterData:true});})();<\/script>`;
   html=html.replace('</body>',guard+'\n</body>');
   const response=new Response(html,{status:network.status,statusText:network.statusText,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'}});
