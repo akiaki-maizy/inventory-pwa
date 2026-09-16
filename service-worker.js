@@ -1,5 +1,5 @@
-const CACHE_NAME = 'inventory-pwa-v1-14-unified-receiving';
-const CURRENT_VERSION = 'MVP Ver.1.14 / 入荷・賞味期限登録統合 / 端末内保存';
+const CACHE_NAME = 'inventory-pwa-v1-14-receiving-decoupled';
+const CURRENT_VERSION = 'MVP Ver.1.14 / 入荷処理整理 / 端末内保存';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js','./date-wheel.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
