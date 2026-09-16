@@ -17,6 +17,6 @@ function enhance(input){if(!input||input.dataset.wheelEnhanced)return;input.data
  [yy.s,mm.s,dd.s].forEach(center);sync();
 }
 function scan(root=document){root.querySelectorAll('input[type="date"],input[data-wheel-enhanced="1"]').forEach(enhance);document.querySelectorAll('.dateQuick,.dateSelectedText').forEach(x=>x.remove());}
-function init(){scan();const obs=new MutationObserver(ms=>{for(const m of ms)for(const node of m.addedNodes)if(node.nodeType===1)scan(node);});obs.observe(document.body,{childList:true,subtree:true});const sub=document.querySelector('header .sub');if(sub)sub.textContent='MVP Ver.1.13 / 賞味期限ロール小型化・今日を初期値 / 端末内保存';}
+function init(){scan();const obs=new MutationObserver(ms=>{for(const m of ms)for(const node of m.addedNodes)if(node.nodeType===1)scan(node);});obs.observe(document.body,{childList:true,subtree:true});}
 window.addEventListener('load',()=>setTimeout(init,900));
 })();
