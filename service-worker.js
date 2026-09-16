@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inventory-pwa-v1-9-batch-receiving';
+const CACHE_NAME = 'inventory-pwa-v1-10-multi-initial-stock';
 const ASSETS = ['./manifest.webmanifest','./icon-192.png','./icon-512.png','./jan-scanner.js','./case-stock.js'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim();});
@@ -8,9 +8,7 @@ async function fixedIndexResponse(request){
   if(!html.includes('id="editProductMasterBtn"'))html=html.replace('<div id="detailLocation" class="muted"></div>','<div id="detailLocation" class="muted"></div>\n<button class="ghost" id="editProductMasterBtn" style="margin-top:10px">商品情報を編集</button>');
   if(!html.includes('jan-scanner.js'))html=html.replace('</body>','<script src="./jan-scanner.js"></script>\n</body>');
   if(!html.includes('case-stock.js'))html=html.replace('</body>','<script src="./case-stock.js"></script>\n</body>');
-  html=html.replace('MVP Ver.1.4 / 端末内保存','MVP Ver.1.9 / 複数期限まとめて入荷登録 / 端末内保存');
-  html=html.replace('MVP Ver.1.5 / JAN読取対応 / 端末内保存','MVP Ver.1.9 / 複数期限まとめて入荷登録 / 端末内保存');
-  html=html.replace('MVP Ver.1.7 / ケース・バラ在庫 / 先期限先出し使用 / 端末内保存','MVP Ver.1.9 / 複数期限まとめて入荷登録 / 端末内保存');
+  html=html.replace(/MVP Ver\.1\.[0-9]+ \/ [^<]*端末内保存/g,'MVP Ver.1.10 / 入力順統一・商品登録時の複数期限 / 端末内保存');
   const response=new Response(html,{status:network.status,statusText:network.statusText,headers:{'Content-Type':'text/html; charset=utf-8'}});
   const cache=await caches.open(CACHE_NAME);cache.put('./index.html',response.clone());return response;
  }catch(e){return(await caches.match('./index.html'))||new Response('アプリを読み込めませんでした。',{status:503});}
