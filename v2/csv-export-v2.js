@@ -1,0 +1,10 @@
+(()=>{
+'use strict';
+const HEADERS=['店舗','商品ID','JANコード','商品名','規格','仕入先','参考単価','保管場所','棚・区画','数量','賞味期限'];
+const csv=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+async function setting(key){const x=await InventoryDB.get('settings',key);return x?.value??'';}
+async function buildRows(){const[products,lots,locations,storeName]=await Promise.all([InventoryDB.getAll('products'),InventoryDB.getAll('lots'),InventoryDB.getAll('locations'),setting('storeName')]);const locMap=new Map(locations.map(x=>[x.id,x]));const productMap=new Map(products.map(x=>[x.id,x]));const rows=[];for(const lot of lots){const qty=Number(lot.qty||0);if(qty<=0)continue;const p=productMap.get(lot.productId);if(!p)continue;const loc=locMap.get(lot.locationId||p.locationId);let root='',shelf='';if(loc){if(loc.parentId){const parent=locMap.get(loc.parentId);root=parent?.name||'';shelf=loc.name||'';}else root=loc.name||'';}rows.push([storeName,p.id,p.jan||'',p.name||'',p.spec||'',p.supplier||'',p.unitPrice??'',root,shelf,qty,lot.expiry||'']);}rows.sort((a,b)=>String(a[7]).localeCompare(String(b[7]),'ja')||String(a[8]).localeCompare(String(b[8]),'ja')||String(a[3]).localeCompare(String(b[3]),'ja')||String(a[10]).localeCompare(String(b[10])));return rows;}
+function toCSV(rows){return '\ufeff'+[HEADERS,...rows].map(r=>r.map(csv).join(',')).join('\r\n');}
+async function exportCSV(){const rows=await buildRows();const text=toCSV(rows);const blob=new Blob([text],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');const store=await setting('storeName');const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'');a.href=url;a.download=`在庫_${String(store||'店舗').replace(/[\\/:*?"<>|]/g,'_')}_${stamp}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);return{rows:rows.length,text};}
+window.InventoryCSV={HEADERS,buildRows,toCSV,exportCSV};
+})();
