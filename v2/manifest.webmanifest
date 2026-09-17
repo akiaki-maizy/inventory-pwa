@@ -1,0 +1,14 @@
+{
+  "name": "在庫・賞味期限管理 Ver.2",
+  "short_name": "在庫管理V2",
+  "description": "端末内保存で使う在庫・賞味期限管理ツール Ver.2",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#ffffff",
+  "icons": [
+    {"src":"../icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"../icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
