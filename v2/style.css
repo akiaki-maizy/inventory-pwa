@@ -11,3 +11,9 @@
 .home-actions .actions{display:grid;grid-template-columns:1fr 1fr}.home-actions .actions button{width:100%;min-height:52px}
 @media(max-width:760px){.history-filters{grid-template-columns:1fr 1fr}.app-header{align-items:flex-start}.header-actions{align-items:center}}
 @media(max-width:560px){.app-header{flex-wrap:wrap}.app-header>div:first-child{flex-basis:100%}.header-actions{width:100%;justify-content:flex-end}.home-actions .actions{grid-template-columns:1fr}.history-filters{grid-template-columns:1fr}}
+
+/* 20260920v: compact locations, JAN search and expiry correction */
+#locationList{display:flex;flex-wrap:wrap;gap:.55rem}.location-link{display:inline-flex;flex-direction:column;width:auto;max-width:18em;min-width:8em;padding:.55em .75em;flex:0 1 auto}.location-link strong,.location-link small{white-space:normal}.location-link small{font-size:.72em}
+.search-with-button{display:flex;gap:.45rem;align-items:stretch}.search-with-button input{flex:1 1 auto}.search-with-button button{flex:0 0 auto;white-space:nowrap;padding-inline:.7em}
+.expiry-correct{display:flex;gap:.4rem;align-items:center;margin-top:.45rem}.expiry-correct input{width:auto;max-width:11em}.expiry-correct button{white-space:nowrap}
+@media(max-width:560px){.location-link{max-width:100%;min-width:7em}.search-with-button{flex-wrap:wrap}.search-with-button button{width:100%}.expiry-correct{flex-wrap:wrap}}
