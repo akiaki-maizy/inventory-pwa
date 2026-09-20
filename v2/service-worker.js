@@ -1,7 +1,7 @@
 'use strict';
-const CACHE='inventory-pwa-v2-shell-20260920z';
+const CACHE='inventory-pwa-v2-shell-20260920z2';
 const SHELL=[
-  './','./index.html','./style.css','./manifest.webmanifest',
+  './','./index.html','./manual.html','./style.css','./manifest.webmanifest',
   './db.js','./inventory-service.js','./master-service.js','./backup-service.js','./migration-service.js',
   './app.js','./product-master-ui.js','./master-management.js','./data-management.js','./receive-input-guard.js',
   './jan-scanner-v2.js','./date-wheel-v2.js','./location-sort-v2.js','./csv-export-v2.js','./csv-export-ui-v2.js','./update-manager.js',
@@ -20,10 +20,11 @@ self.addEventListener('fetch',event=>{
   const url=new URL(req.url);
   if(url.origin!==self.location.origin)return;
   if(req.mode==='navigate'){
+    const page=url.pathname.endsWith('/manual.html')?'./manual.html':'./index.html';
     event.respondWith(fetch(req).then(res=>{
-      if(res&&res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put('./index.html',copy));}
+      if(res&&res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put(page,copy));}
       return res;
-    }).catch(()=>caches.match('./index.html')));
+    }).catch(()=>caches.match(page)));
     return;
   }
   if(!url.pathname.includes('/inventory-pwa/v2/')&&!url.pathname.endsWith('/inventory-pwa/icon-192.png')&&!url.pathname.endsWith('/inventory-pwa/icon-512.png'))return;
