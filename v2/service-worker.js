@@ -1,15 +1,16 @@
 'use strict';
-const CACHE='inventory-pwa-v2-shell-20260920k';
+const CACHE='inventory-pwa-v2-shell-20260920m';
 const SHELL=[
   './','./index.html','./style.css','./manifest.webmanifest',
   './db.js','./inventory-service.js','./master-service.js','./backup-service.js','./migration-service.js',
   './app.js','./product-master-ui.js','./master-management.js','./data-management.js','./receive-input-guard.js',
-  './jan-scanner-v2.js','./date-wheel-v2.js','./location-sort-v2.js','./csv-export-v2.js','./csv-export-ui-v2.js',
+  './jan-scanner-v2.js','./date-wheel-v2.js','./location-sort-v2.js','./csv-export-v2.js','./csv-export-ui-v2.js','./update-manager.js',
   '../icon-192.png','../icon-512.png'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
+self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();});
 self.addEventListener('activate',event=>{
   event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('inventory-pwa-v2-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
