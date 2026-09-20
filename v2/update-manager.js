@@ -1,0 +1,11 @@
+(()=>{
+'use strict';
+const BUILD='20260920m',CACHE_PREFIX='inventory-pwa-v2-',$=id=>document.getElementById(id);let reg=null,waiting=null,reloading=false;
+function status(t){const e=$('updateStatus');if(e)e.textContent=t;}
+function showUpdate(worker){waiting=worker||reg?.waiting||null;const b=$('applyUpdateBtn');if(b)b.classList.toggle('hidden',!waiting);if(waiting)status('新しいバージョンがあります。［今すぐ更新］で切り替えられます。');}
+async function register(){if(!('serviceWorker' in navigator)){status('このブラウザはアプリ更新機能に対応していません。');return;}try{reg=await navigator.serviceWorker.register('./service-worker.js',{scope:'./'});if(reg.waiting)showUpdate(reg.waiting);reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)showUpdate(w);});});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading)return;reloading=true;location.reload();});await check(false);}catch(e){status('更新確認に失敗しました。オフラインの場合は現在の版をそのまま使用できます。');}}
+async function check(manual=true){if(!reg)reg=await navigator.serviceWorker.getRegistration('./');if(!reg){if(manual)status('更新機能を準備しています。');return;}if(!navigator.onLine){status('オフラインのため更新確認できません。現在 '+BUILD+' を使用中です。');return;}try{await reg.update();if(reg.waiting)showUpdate(reg.waiting);else if(manual)status('最新版です。現在 '+BUILD+' を使用中です。');else status('現在 '+BUILD+' を使用中です。');}catch(e){status('更新確認に失敗しました。通信状態を確認してください。');}}
+async function apply(){if(!waiting&&reg?.waiting)waiting=reg.waiting;if(!waiting){await check(true);if(!waiting)return;}status('更新しています…');waiting.postMessage({type:'SKIP_WAITING'});}
+async function clearCache(){if(!confirm('Ver.2のアプリキャッシュを削除して再読み込みします。\n商品・在庫・履歴などの端末データは削除しません。\n\n続行しますか？'))return;try{const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith(CACHE_PREFIX)).map(k=>caches.delete(k)));status('アプリキャッシュを削除しました。再読み込みします。');location.reload();}catch(e){status('キャッシュ削除に失敗しました: '+e.message);}}
+window.addEventListener('load',()=>{register();$('checkUpdateBtn')?.addEventListener('click',()=>check(true));$('applyUpdateBtn')?.addEventListener('click',apply);$('clearAppCacheBtn')?.addEventListener('click',clearCache);});
+})();
