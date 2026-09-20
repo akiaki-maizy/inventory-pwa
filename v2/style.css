@@ -3,3 +3,11 @@
 @media(max-width:560px){.header-menu>summary{font-size:.72rem;padding:7px 8px}.header-menu-panel{min-width:160px}.menu-section>summary{padding:12px}.app-header .header-actions{align-items:center}}
 
 .product-actions>summary,.master-actions>summary{cursor:pointer;list-style:none}.product-actions>summary::-webkit-details-marker,.master-actions>summary::-webkit-details-marker{display:none}.product-actions>summary:after,.master-actions>summary:after{content:'操作を開く';display:block;margin-top:6px;font-size:.72rem;color:#667085}.product-actions[open]>summary:after,.master-actions[open]>summary:after{content:'操作を閉じる'}.product-actions>.item-actions,.master-actions>.item-actions{margin-top:10px;flex-wrap:wrap}.location-link{cursor:pointer}.location-link:active{background:#eef4ff}
+
+/* 20260920u: large-font and overflow safety */
+.app-header{gap:10px}.app-header>div:first-child{min-width:0;flex:1}.header-actions{flex-shrink:0}.header-actions button,.header-menu>summary{white-space:nowrap;word-break:keep-all}
+.inventory-filters,.history-filters{min-width:0}.inventory-filters>label,.history-filters>label{min-width:0}.inventory-filters input,.inventory-filters select,.history-filters input,.history-filters select{min-width:0;width:100%}
+.history-tools{min-width:0;flex-wrap:wrap}.history-tools button{max-width:100%;white-space:normal}
+.home-actions .actions{display:grid;grid-template-columns:1fr 1fr}.home-actions .actions button{width:100%;min-height:52px}
+@media(max-width:760px){.history-filters{grid-template-columns:1fr 1fr}.app-header{align-items:flex-start}.header-actions{align-items:center}}
+@media(max-width:560px){.app-header{flex-wrap:wrap}.app-header>div:first-child{flex-basis:100%}.header-actions{width:100%;justify-content:flex-end}.home-actions .actions{grid-template-columns:1fr}.history-filters{grid-template-columns:1fr}}
