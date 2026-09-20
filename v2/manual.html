@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<title>操作マニュアル｜在庫・賞味期限管理 Ver.2</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;color:#1f2937;background:#f5f6f8}
+*{box-sizing:border-box}body{margin:0;line-height:1.7}header{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #dbe2ea;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}header strong{display:block;font-size:1.05rem}header small{color:#64748b}.back{display:inline-block;background:#eef2f7;color:#1f2937;text-decoration:none;border-radius:10px;padding:9px 13px;font-weight:700}main{max-width:860px;margin:auto;padding:18px 14px 56px}.notice,.card{background:#fff;border:1px solid #dbe2ea;border-radius:14px;padding:18px;margin-bottom:16px}.notice{border-left:5px solid #2563eb}.toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.toc a{display:block;text-decoration:none;color:#174ea6;background:#eff6ff;border-radius:10px;padding:10px;font-weight:700}.step{border-top:1px solid #e5e7eb;padding-top:18px;margin-top:18px}.step:first-of-type{border-top:0;padding-top:0}.step h3{margin-bottom:6px}.shot{margin:14px 0;background:#f8fafc;border:2px dashed #94a3b8;border-radius:12px;min-height:180px;padding:20px;display:grid;place-items:center;text-align:center;color:#475569}.shot strong{display:block;color:#334155}.tip{background:#fff7ed;border-left:4px solid #f59e0b;padding:10px 12px;border-radius:8px}ol,ul{padding-left:1.4rem}.admin{border-color:#f0c36d}footer{text-align:center;color:#64748b;padding:10px}
+@media print{header{position:static}.back{display:none}body{background:#fff}.card,.notice{break-inside:avoid}.shot{min-height:120px}}
+</style>
+</head>
+<body>
+<header><div><strong>在庫・賞味期限管理 Ver.2</strong><small>スタッフ向け簡易操作ガイド（スクショ差し込み用雛形）</small></div><a class="back" href="./">アプリへ戻る</a></header>
+<main>
+<section class="notice"><strong>このガイドについて</strong><br>日常業務で使う操作を短くまとめています。画面写真は試験運用後に差し替えます。迷った場合は処理を確定せず、管理者へ確認してください。</section>
+<nav class="card"><h2>目次</h2><div class="toc"><a href="#receive">入荷</a><a href="#use">使用</a><a href="#expiry">賞味期限</a><a href="#stocktake">棚卸</a><a href="#history">履歴</a><a href="#jan">JAN検索</a><a href="#admin">管理者向け</a><a href="#trouble">困ったとき</a></div></nav>
+
+<section class="card" id="receive"><h2>1. 入荷を記録する</h2>
+<div class="step"><h3>①「入荷・在庫」を開く</h3><p>ホーム画面の「商品操作」から選びます。</p><div class="shot"><div><strong>スクショ①：ホーム画面</strong>「入荷・在庫」ボタンが分かる状態</div></div></div>
+<div class="step"><h3>② 商品を選び「入荷」</h3><p>商品名、規格、JANまたは保管場所で対象を探します。</p><div class="shot"><div><strong>スクショ②：商品一覧</strong>検索欄・商品・「入荷」ボタンを含める</div></div></div>
+<div class="step"><h3>③ 賞味期限と数量を入力して保存</h3><p>ケース数とバラ数を入力します。期限が複数ある場合は「賞味期限を追加」で行を分けます。</p><div class="shot"><div><strong>スクショ③：入荷入力</strong>賞味期限・ケース・バラ・入荷合計を含める</div></div><p class="tip">数量を入れた行には賞味期限が必要です。保存前に「入荷合計」を確認してください。</p></div>
+</section>
+
+<section class="card" id="use"><h2>2. 使用を記録する</h2>
+<div class="step"><h3>①「入荷・在庫」から商品を選び「在庫・使用」</h3><p>現在庫と賞味期限別の数量を確認します。</p><div class="shot"><div><strong>スクショ④：商品一覧</strong>対象商品の「在庫・使用」導線</div></div></div>
+<div class="step"><h3>② 使用数量を入力して保存</h3><p>使用した個数を入力し「使用を記録」を押します。期限が早い在庫から自動で減ります。</p><div class="shot"><div><strong>スクショ⑤：在庫・使用画面</strong>在庫、使用数量、保存ボタンを含める</div></div><p class="tip">ケース数ではなく個数で入力します。在庫より多い数量は登録できません。</p></div>
+</section>
+
+<section class="card" id="expiry"><h2>3. 賞味期限を確認する</h2>
+<div class="step"><h3>① 上部の「賞味期限」を開く</h3><p>期限の早い順に表示されます。「警告期間内」「注意期間内」「期限切れのみ」で絞り込めます。</p><div class="shot"><div><strong>スクショ⑥：賞味期限一覧</strong>表示範囲と期限表示が分かる状態</div></div></div>
+<div class="step"><h3>② 期限を訂正する場合</h3><p>対象商品を開き、期限欄を直して「期限訂正」を押します。数量は変わらず、訂正履歴が残ります。</p><div class="shot"><div><strong>スクショ⑦：期限訂正</strong>変更前後の期限と「期限訂正」ボタン</div></div><p class="tip">単なる見落としでも、棚卸で数量を変えずに「期限訂正」を使います。</p></div>
+</section>
+
+<section class="card" id="stocktake"><h2>4. 棚卸をする</h2>
+<div class="step"><h3>① 上部の「棚卸」を開く</h3><p>保管場所・棚で絞り込み、実際に数えた数量を入力します。</p><div class="shot"><div><strong>スクショ⑧：棚卸一覧</strong>場所の絞り込みと実在庫数入力欄</div></div></div>
+<div class="step"><h3>② 変更件数を確認してまとめて保存</h3><p>変更した商品だけが対象です。「変更：○件」を確認して保存します。</p><div class="shot"><div><strong>スクショ⑨：棚卸保存</strong>変更表示と「変更をまとめて保存」ボタン</div></div></div>
+</section>
+
+<section class="card" id="history"><h2>5. 履歴を確認する</h2>
+<p>上部の「履歴」から、入荷・使用・廃棄・棚卸・賞味期限訂正を確認できます。種類、商品、期間で絞り込めます。</p><div class="shot"><div><strong>スクショ⑩：履歴画面</strong>絞り込み条件と履歴1件を含める</div></div>
+</section>
+
+<section class="card" id="jan"><h2>6. JANコードで探す</h2>
+<p>「入荷・在庫」の商品検索で「JAN読取」を押し、商品のバーコードを読み取ります。カメラ許可を求められた場合は許可してください。</p><div class="shot"><div><strong>スクショ⑪：JAN検索</strong>JAN読取ボタンと読取後の検索結果</div></div>
+</section>
+
+<section class="card admin" id="admin"><h2>7. 管理者向け操作</h2><p>以下は通常スタッフが日常的に行う操作ではありません。</p>
+<ul><li>商品・保管場所・仕入先・分類の登録・編集</li><li>商品や保管場所の使用停止／再開</li><li>バックアップ保存・復元</li><li>アプリ更新、キャッシュ削除</li><li>Ver.1.26からの移行、端末データ全削除</li></ul>
+<div class="shot"><div><strong>スクショ⑫：設定・管理メニュー</strong>「マスタ管理」と「設定」の入口</div></div>
+<p class="tip">復元、移行、端末データ全削除は、必ず管理者がバックアップを確認してから実行します。</p>
+</section>
+
+<section class="card" id="trouble"><h2>8. 困ったとき</h2>
+<ul><li><strong>最新版にならない：</strong>設定 → アプリ管理 →「更新を確認」。更新表示が出たら「今すぐ更新」。</li><li><strong>表示がおかしい：</strong>通信接続を確認し、「アプリキャッシュ削除・再読込」。在庫データは消えません。</li><li><strong>通信がない：</strong>一度読み込んだアプリと本マニュアルはオフラインでも利用できます。</li><li><strong>在庫や履歴がおかしい：</strong>上書きや全削除をせず、画面の写真と発生した操作を管理者へ伝えます。</li></ul>
+<div class="shot"><div><strong>スクショ⑬：アプリ管理</strong>更新確認とキャッシュ削除ボタン</div></div>
+</section>
+
+<section class="notice"><strong>スクショ準備メモ</strong><br>個人名・店舗固有情報・実在するJANなどが写る場合は、公開用資料へ使う前にマスキングします。各画像は横向きより、実際に使うタブレットの縦向き画面を優先します。</section>
+</main>
+<footer>対象：Ver.2 / 20260920z2（マニュアル雛形）</footer>
+</body></html>
