@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='inventory-pwa-v2-shell-20260920w';
+const CACHE='inventory-pwa-v2-shell-20260920w2';
 const SHELL=[
   './','./index.html','./style.css','./manifest.webmanifest',
   './db.js','./inventory-service.js','./master-service.js','./backup-service.js','./migration-service.js',
