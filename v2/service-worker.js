@@ -1,10 +1,10 @@
 'use strict';
-const CACHE='inventory-pwa-v2-shell-20260927b';
+const CACHE='inventory-pwa-v2-shell-20260927c';
 const SHELL=[
   './','./index.html','./manual.html','./style.css','./manifest.webmanifest',
   './db.js','./inventory-service.js','./master-service.js','./backup-service.js','./migration-service.js',
   './app.js','./product-master-ui.js','./master-management.js','./data-management.js','./receive-input-guard.js',
-  './jan-scanner-v2.js','./date-wheel-v2.js','./location-sort-v2.js','./csv-export-v2.js','./csv-export-ui-v2.js','./update-manager.js',
+  './jan-scanner-v2.js','./date-wheel-v2.js','./work-session.js','./location-sort-v2.js','./csv-export-v2.js','./csv-export-ui-v2.js','./update-manager.js',
   '../icon-192.png','../icon-512.png'
 ];
 self.addEventListener('install',event=>{
