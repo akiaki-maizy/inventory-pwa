@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const DB_NAME='inventory_pwa_v2';
+const DB_NAME=window.INVENTORY_DB_NAME_OVERRIDE||'inventory_pwa_v2';
 const DB_VERSION=2;
 const STORES=['settings','locations','suppliers','categories','products','lots','transactions'];
 let db=null;
