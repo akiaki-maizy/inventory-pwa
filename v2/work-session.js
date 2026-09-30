@@ -88,12 +88,18 @@ function validateResult(obj){
  safeJobId(obj.job?.jobId);safeId(obj.job?.sourceDeviceId,'発行端末ID');safeId(obj.childDeviceId,'子機端末ID');safeId(obj.job?.scopeId,'担当範囲ID');
  if(!Array.isArray(obj.job.productIds)||!obj.job.productIds.length||!Array.isArray(obj.job.scopeIds)||!obj.job.scopeIds.length||!Array.isArray(obj.finalLots)||!Array.isArray(obj.transactions))throw new Error('作業結果の情報が不足しています');
  const pids=new Set(),scopeIds=new Set(),lotIds=new Set(),txIds=new Set();
+ if(!Array.isArray(obj.baseline?.products)||!Array.isArray(obj.baseline?.lots))throw new Error('作業開始時データが不足しています');
  for(const id of obj.job.productIds){safeId(id,'商品ID');if(pids.has(id))throw new Error('商品IDが重複しています');pids.add(id);}
  for(const id of obj.job.scopeIds){safeId(id,'保管場所ID');if(scopeIds.has(id))throw new Error('保管場所IDが重複しています');scopeIds.add(id);}
+ const baselineProducts=new Map();
+ for(const p of obj.baseline.products){safeId(p?.id,'開始時商品ID');if(!pids.has(p.id))throw new Error('担当外の商品が開始時データに含まれています');if(baselineProducts.has(p.id))throw new Error('開始時商品IDが重複しています');baselineProducts.set(p.id,p);}
+ if(baselineProducts.size!==pids.size)throw new Error('開始時商品と担当商品の件数が一致しません');
+ const baselineLotIds=new Set();
+ for(const l of obj.baseline.lots){safeId(l?.id,'開始時ロットID');if(baselineLotIds.has(l.id))throw new Error('開始時ロットIDが重複しています');baselineLotIds.add(l.id);if(!pids.has(l.productId))throw new Error('担当外ロットが開始時データに含まれています');safeInteger(l.qty,'開始時ロット数量',{min:0,max:Number.MAX_SAFE_INTEGER});const p=baselineProducts.get(l.productId);if(l.locationId!==p?.locationId)throw new Error('開始時ロットの保管場所が商品マスタと一致しません');}
  for(const l of obj.finalLots){
   safeId(l?.id,'ロットID');if(lotIds.has(l.id))throw new Error('作業結果のロットIDが重複しています');lotIds.add(l.id);
   safeId(l.productId,'ロット商品ID');if(!pids.has(l.productId))throw new Error('担当外商品のロットが含まれています');
-  if(l.locationId!=null){safeId(l.locationId,'ロット保管場所ID');if(!scopeIds.has(l.locationId))throw new Error('担当外保管場所のロットが含まれています');}
+  if(l.locationId!=null){safeId(l.locationId,'ロット保管場所ID');if(!scopeIds.has(l.locationId))throw new Error('担当外保管場所のロットが含まれています');}const product=baselineProducts.get(l.productId);if(l.locationId!==product?.locationId)throw new Error('作業結果ロットの保管場所が商品マスタと一致しません');
   safeInteger(l.qty,'作業結果の数量',{min:0,max:Number.MAX_SAFE_INTEGER});
   if(!validDate(l.expiry))throw new Error('作業結果の賞味期限が不正です');
   if(l.receivedAt!=null&&!validDate(l.receivedAt))throw new Error('作業結果の入荷日が不正です');
@@ -102,14 +108,24 @@ function validateResult(obj){
  for(const t of obj.transactions){
   safeId(t?.id,'履歴ID');if(txIds.has(t.id))throw new Error('作業履歴IDが重複しています');txIds.add(t.id);
   safeId(t.productId,'履歴商品ID');if(!pids.has(t.productId))throw new Error('担当外商品の履歴が含まれています');
-  if(t.locationId!=null){safeId(t.locationId,'履歴保管場所ID');if(!scopeIds.has(t.locationId))throw new Error('担当外保管場所の履歴が含まれています');}
+  if(t.locationId!=null){safeId(t.locationId,'履歴保管場所ID');if(!scopeIds.has(t.locationId))throw new Error('担当外保管場所の履歴が含まれています');}const product=baselineProducts.get(t.productId);if(t.locationId!==product?.locationId)throw new Error('作業履歴の保管場所が商品マスタと一致しません');
   if(t.lotId!=null)safeId(t.lotId,'履歴ロットID');
   safeInteger(t.qty,'作業履歴の数量',{min:-Number.MAX_SAFE_INTEGER,max:Number.MAX_SAFE_INTEGER});
-  if(t.balance!=null)safeInteger(t.balance,'作業履歴の残数',{min:0,max:Number.MAX_SAFE_INTEGER});
+  safeInteger(t.balance,'作業履歴の残数',{min:0,max:Number.MAX_SAFE_INTEGER});
   if(!allowedTypes.has(t.type))throw new Error('作業履歴の種類が不正です');
+  if(t.type==='入荷'&&t.qty<=0)throw new Error('入荷履歴の数量符号が不正です');
+  if((t.type==='使用'||t.type==='廃棄')&&t.qty>=0)throw new Error('使用・廃棄履歴の数量符号が不正です');
+  if(t.type==='賞味期限訂正'&&t.qty!==0)throw new Error('賞味期限訂正履歴の数量が不正です');
+  if((t.type==='棚卸調整'||t.type==='期限別棚卸')&&t.qty===0)throw new Error('棚卸履歴の数量が不正です');
   if(!validTimestamp(t.timestamp))throw new Error('作業履歴の日時が不正です');
   if(t.note!=null&&(typeof t.note!=='string'||t.note.length>1000))throw new Error('作業履歴のメモが不正です');
   if(t.reason!=null&&(typeof t.reason!=='string'||t.reason.length>200))throw new Error('作業履歴の理由が不正です');
+ }
+ for(const productId of pids){
+  const before=obj.baseline.lots.filter(l=>l.productId===productId).reduce((sum,l)=>sum+l.qty,0);
+  const after=obj.finalLots.filter(l=>l.productId===productId).reduce((sum,l)=>sum+l.qty,0);
+  const history=obj.transactions.filter(t=>t.productId===productId).reduce((sum,t)=>sum+t.qty,0);
+  if(after-before!==history)throw new Error('作業結果の在庫差分と履歴が一致しません');
  }
  return obj;
 }
