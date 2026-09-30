@@ -20,7 +20,7 @@ await InventoryService.receive(workProductId,[{qty:2,expiry:'2027-12-31'}]);
 const workResult=await InventoryWork.exportResult();
 line('子機結果に作業履歴を含む',workResult.transactions.some(t=>t.type==='入荷'&&Number(t.qty)===2));
 await expectReject('結果作成後は子機在庫変更を拒否',()=>InventoryService.receive(workProductId,[{qty:1,expiry:'2027-12-31'}]),'結果を作成済み');
-const badQtyResult=JSON.parse(JSON.stringify(workResult));badQtyResult.transactions[0].qty=String(badQtyResult.transactions[0].qty);await expectReject('共同作業結果の文字列数量を拒否',()=>InventoryWork.normalizeResult(badQtyResult),'整数ではありません');
+const badQtyResult=JSON.parse(JSON.stringify(workResult));badQtyResult.transactions[0].qty=String(badQtyResult.transactions[0].qty);await expectReject('共同作業結果の文字列数量を拒否',()=>InventoryWork.normalizeResult(badQtyResult),'整数ではありません');const badBalance=JSON.parse(JSON.stringify(workResult));badBalance.finalLots[0].qty+=1;await expectReject('共同作業結果の在庫差分と履歴不一致を拒否',()=>InventoryWork.normalizeResult(badBalance),'在庫差分と履歴');
 await BackupService.replaceAll(mainBeforeWork);
 await InventoryService.receive(workProductId,[{qty:1,expiry:'2028-01-01'}]);
 const conflictPreview=await InventoryWork.previewResult(workResult);line('メイン側変更後は共同作業結果を競合扱い',!conflictPreview.canCommit&&conflictPreview.conflicts.length>0);
