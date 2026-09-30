@@ -1,6 +1,6 @@
 (function workModule(){
 'use strict';
-const BUILD='20260930c';
+const BUILD='20260930d';
 const PACKAGE_FORMAT='inventory-pwa-work-package',RESULT_FORMAT='inventory-pwa-work-result',SCHEMA_VERSION=1;
 const DB=()=>window.InventoryDB;
 const clone=v=>JSON.parse(JSON.stringify(v));
