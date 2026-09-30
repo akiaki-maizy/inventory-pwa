@@ -1,1 +1,67 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ver.2 端末操作確認</title><style>body{font-family:system-ui,sans-serif;max-width:760px;margin:24px auto;padding:0 16px;line-height:1.7}.card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:12px 0;background:#fff}label{display:block;padding:8px 0}input{width:22px;height:22px;vertical-align:middle;margin-right:8px}.note{color:#666}.warn{color:#a51d16;font-weight:700}</style></head><body><h1>Ver.2 端末操作確認</h1><p>このページ自体は在庫DBを変更しません。通常アプリで操作し、結果だけチェックしてください。</p><div class="card"><h2>更新管理</h2><label><input type="checkbox">起動後、更新状態が表示される</label><label><input type="checkbox">「更新を確認」で最新版表示になる</label><label><input type="checkbox">新版がある場合だけ「今すぐ更新」が表示される</label></div><div class="card"><h2>キャッシュ復旧</h2><label><input type="checkbox">「アプリキャッシュ削除・再読込」で再起動する</label><label><input type="checkbox">再起動後も商品・在庫・履歴が残る</label><label><input type="checkbox">オフライン再起動できる</label></div><div class="card"><h2>データ管理</h2><p class="warn">全削除はテスト用端末、またはバックアップ取得後だけ実施。</p><label><input type="checkbox">Ver.2バックアップを保存できる</label><label><input type="checkbox">全削除後に初期設定画面へ戻る</label><label><input type="checkbox">デモデータで開始できる</label><label><input type="checkbox">バックアップ復元後に件数・在庫が戻る</label></div><div class="card"><h2>画面機能</h2><label><input type="checkbox">在庫検索・場所フィルターが動く</label><label><input type="checkbox">一括棚卸を保存できる</label><label><input type="checkbox">履歴検索・日付・種類フィルターが動く</label><label><input type="checkbox">表示中の履歴CSVを保存できる</label></div><p class="note">確認票 20260920n。チェック状態は保存しません。</p></body></html>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ffffff">
+<title>Ver.2 端末診断</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;color:#1f2937;background:#f5f6f8}
+*{box-sizing:border-box}body{margin:0;line-height:1.65}main{max-width:820px;margin:auto;padding:18px 14px 50px}.card{background:#fff;border:1px solid #dbe2ea;border-radius:14px;padding:16px;margin-bottom:14px}.row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #eef2f7}.row:last-child{border-bottom:0}.ok{color:#087830;font-weight:700}.warn{color:#a15c00;font-weight:700}.ng{color:#b00020;font-weight:700}.note{color:#64748b;font-size:.92rem}.actions{display:flex;flex-wrap:wrap;gap:8px}button,a.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;background:#eef2f7;color:#1f2937;text-decoration:none}h1{font-size:1.5rem}.summary{font-size:1.05rem;font-weight:700}.manual label{display:block;padding:7px 0}.manual input{width:20px;height:20px;vertical-align:middle;margin-right:8px}
+</style>
+</head>
+<body>
+<main>
+<h1>Ver.2 端末診断</h1>
+<p>このページは在庫DBを書き換えません。端末・ブラウザ・PWA機能だけを確認します。</p>
+<div class="actions"><button id="rerun" type="button">再診断</button><a class="btn" href="./">アプリへ戻る</a><a class="btn" href="./manual.html">操作マニュアル</a></div>
+<section class="card"><div id="summary" class="summary">診断中…</div><p id="detail" class="note"></p></section>
+<section class="card"><h2>自動診断</h2><div id="checks"></div></section>
+<section class="card manual"><h2>共同作業 実機確認</h2>
+<label><input type="checkbox">メイン機で担当場所の共同作業ファイルを作成できる</label>
+<label><input type="checkbox">共有を押すとAndroidの共有画面が開く</label>
+<label><input type="checkbox">子機で元店舗の完全バックアップを保存できる</label>
+<label><input type="checkbox">子機で共同作業ファイルを読み込み「子機作業モード」になる</label>
+<label><input type="checkbox">子機で棚卸・入荷を行い、作業結果を作成できる</label>
+<label><input type="checkbox">結果作成後は在庫変更が拒否される</label>
+<label><input type="checkbox">結果を保存・共有した後だけ元バックアップへ復元できる</label>
+<label><input type="checkbox">メイン機で結果プレビュー後に確定反映できる</label>
+<label><input type="checkbox">同じ結果を再読込すると二重取込を拒否する</label>
+</section>
+<p class="note">診断票 20260930c。チェック状態は保存しません。</p>
+</main>
+<script>
+const EXPECTED='20260930c';
+const checks=document.getElementById('checks'),summary=document.getElementById('summary'),detail=document.getElementById('detail');
+function row(name,status,text){const e=document.createElement('div');e.className='row';const a=document.createElement('span'),b=document.createElement('span');a.textContent=name;b.textContent=text;b.className=status;e.append(a,b);checks.appendChild(e);return status==='ok';}
+async function diagnose(){
+ checks.innerHTML='';let pass=0,total=0,critical=true;
+ const add=(n,s,t,c=false)=>{total++;if(row(n,s,t))pass++;if(c&&s!=='ok')critical=false;};
+ add('Secure Context',window.isSecureContext?'ok':'ng',window.isSecureContext?'HTTPS / secure':'非secure',true);
+ add('IndexedDB',typeof indexedDB!=='undefined'?'ok':'ng',typeof indexedDB!=='undefined'?'利用可能':'利用不可',true);
+ add('SHA-256',crypto?.subtle?'ok':'ng',crypto?.subtle?'利用可能':'利用不可',true);
+ let share='ng',shareText='利用不可';
+ try{const f=new File(['{}'],'inventory-test.json',{type:'application/json'});if(navigator.share){share=navigator.canShare&&!navigator.canShare({files:[f]})?'warn':'ok';shareText=share==='ok'?'ファイル共有対応':'共有APIあり / ファイル共有は未確認';}}catch(_){}
+ add('Web Share',share,shareText,false);
+ add('オンライン状態',navigator.onLine?'ok':'warn',navigator.onLine?'オンライン':'オフライン');
+ const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+ add('PWA表示モード',standalone?'ok':'warn',standalone?'standalone':'ブラウザ表示');
+ add('BarcodeDetector',typeof BarcodeDetector!=='undefined'?'ok':'warn',typeof BarcodeDetector!=='undefined'?'ネイティブ対応':'非対応 / ZXingフォールバック');
+ let swStatus='ng',swText='未対応';
+ try{if('serviceWorker'in navigator){await navigator.serviceWorker.ready;swStatus=navigator.serviceWorker.controller?'ok':'warn';swText=navigator.serviceWorker.controller?'制御中':'登録済み / 現在ページは未制御';}}catch(e){swText=e.message;}
+ add('Service Worker',swStatus,swText,true);
+ let cacheStatus='warn',cacheText='確認不能';
+ try{if('caches'in window){const keys=await caches.keys(),k=keys.find(x=>x==='inventory-pwa-v2-shell-'+EXPECTED);cacheStatus=k?'ok':'warn';cacheText=k?'最新shellあり':keys.filter(x=>x.startsWith('inventory-pwa-v2-')).join(', ')||'Ver.2 cacheなし';}}catch(e){cacheText=e.message;}
+ add('PWAキャッシュ',cacheStatus,cacheText);
+ let buildStatus='warn',buildText='確認不能';
+ try{const t=await fetch('./index.html',{cache:'no-store'}).then(r=>r.text());buildStatus=t.includes('Ver.2 / '+EXPECTED+' /')?'ok':'ng';buildText=buildStatus==='ok'?EXPECTED:'公開indexのbuild不一致';}catch(e){buildText='オフラインのため公開版確認不可';}
+ add('公開アプリBuild',buildStatus,buildText,true);
+ try{if(navigator.storage?.estimate){const est=await navigator.storage.estimate(),used=Math.round((est.usage||0)/1024/1024),quota=Math.round((est.quota||0)/1024/1024);add('ストレージ','ok',used+'MB / 約'+quota+'MB');}}catch(_){}
+ summary.textContent=critical?'共同作業の必須機能は利用可能です':'必須機能に未確認または不足があります';
+ summary.className='summary '+(critical?'ok':'ng');
+ detail.textContent=pass+' / '+total+' 項目がOK。WARNは端末依存または手動確認が必要な項目です。';
+}
+document.getElementById('rerun').onclick=diagnose;diagnose();
+</script>
+</body>
+</html>
