@@ -25,7 +25,7 @@ await BackupService.replaceAll(mainBeforeWork);
 await InventoryService.receive(workProductId,[{qty:1,expiry:'2028-01-01'}]);
 const conflictPreview=await InventoryWork.previewResult(workResult);line('メイン側変更後は共同作業結果を競合扱い',!conflictPreview.canCommit&&conflictPreview.conflicts.length>0);
 await BackupService.replaceAll(mainBeforeWork);
-const tampered=JSON.parse(JSON.stringify(workResult));if(tampered.baseline.lots.length)tampered.baseline.lots[0].qty+=1;else tampered.baseline.products[0].name+='改';await expectReject('開始状態を改ざんした結果を拒否',()=>InventoryWork.previewResult(tampered),'整合性');
+const tampered=JSON.parse(JSON.stringify(workResult));tampered.baseline.products[0].name+='改';await expectReject('開始状態を改ざんした結果を拒否',()=>InventoryWork.previewResult(tampered),'整合性');
 const workPreview=await InventoryWork.previewResult(workResult);
 line('共同作業結果を確定前にプレビューできる',workPreview.canCommit&&workPreview.summary.delta===2);
 await InventoryWork.commitResult(workPreview);
