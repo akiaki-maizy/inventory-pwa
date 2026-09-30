@@ -20,11 +20,11 @@ self.addEventListener('fetch',event=>{
   const url=new URL(req.url);
   if(url.origin!==self.location.origin)return;
   if(req.mode==='navigate'){
-    const page=url.pathname.endsWith('/manual.html')?'./manual.html':'./index.html';
+    const isManual=url.pathname.endsWith('/manual.html'),isAux=/\/(test|device-check)\.html$/.test(url.pathname),fallback=isManual?'./manual.html':isAux?null:'./index.html';
     event.respondWith(fetch(req).then(res=>{
-      if(res&&res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put(page,copy));}
+      if(res&&res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy));}
       return res;
-    }).catch(()=>caches.match(page)));
+    }).catch(async()=>{const exact=await caches.match(req,{ignoreSearch:true});if(exact)return exact;if(fallback){const cached=await caches.match(fallback);if(cached)return cached;}return new Response('オフラインではこのページを開けません。',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}});}));
     return;
   }
   if(!url.pathname.includes('/inventory-pwa/v2/')&&!url.pathname.endsWith('/inventory-pwa/icon-192.png')&&!url.pathname.endsWith('/inventory-pwa/icon-512.png'))return;
