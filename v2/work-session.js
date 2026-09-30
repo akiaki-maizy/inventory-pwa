@@ -11,7 +11,7 @@ const safeName=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'_').trim()||'データ'
 function stable(v){if(Array.isArray(v))return '['+v.map(stable).join(',')+']';if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+stable(v[k])).join(',')+'}';return JSON.stringify(v);}
 function sortById(items,key='id'){return clone(items||[]).sort((a,b)=>String(a?.[key]||'').localeCompare(String(b?.[key]||'')));}
 function same(a,b){return stable(sortById(a))===stable(sortById(b));}
-function sameStrings(a,b){return stable([...(a||[])].map(String).sort())===stable([...(b||[])].map(String).sort());}
+function sameStrings(a,b){return stable([...(a||[])].map(String).sort())===stable([...(b||[])].map(String).sort());}async function sha256(value){if(!crypto?.subtle)throw new Error('この端末は共同作業の整合性確認に対応していません');const bytes=new TextEncoder().encode(stable(value)),hash=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('');}async function digestBaseline(b){return sha256({products:sortById(b?.products||[]),lots:sortById(b?.lots||[])});}
 function safeId(v,label='ID'){if(typeof v!=='string'||!v||v.length>200||/[<>"'\u0000-\u001f\u007f]/.test(v))throw new Error(`${label}が不正です`);return v;}
 function safeJobId(v){safeId(v,'作業ID');if(!/^[A-Za-z0-9._:-]{8,200}$/.test(v))throw new Error('作業IDが不正です');return v;}
 function safeInteger(v,label,{min=null,max=null}={}){if(typeof v!=='number'||!Number.isSafeInteger(v))throw new Error(`${label}が整数ではありません`);if(min!==null&&v<min)throw new Error(`${label}が範囲外です`);if(max!==null&&v>max)throw new Error(`${label}が範囲外です`);return v;}
@@ -36,7 +36,7 @@ function categoryClosure(categories,ids){const byId=new Map(categories.map(x=>[x
 async function recordJob(job){const raw=await getSetting('workJobs'),jobs=Array.isArray(raw)?raw:[];await putSetting('workJobs',[job,...jobs.filter(x=>x.jobId!==job.jobId)].slice(0,200));}
 function jobMatches(a,b){
  if(!a||!b)return false;
- return a.jobId===b.jobId&&a.sourceDeviceId===b.sourceDeviceId&&String(a.sourceStoreName||'')===String(b.sourceStoreName||'')&&a.scopeId===b.scopeId&&String(a.build||'')===String(b.build||'')&&sameStrings(a.scopeIds,b.scopeIds)&&sameStrings(a.productIds,b.productIds);
+ return a.jobId===b.jobId&&a.sourceDeviceId===b.sourceDeviceId&&String(a.sourceStoreName||'')===String(b.sourceStoreName||'')&&a.scopeId===b.scopeId&&String(a.build||'')===String(b.build||'')&&String(a.baselineDigest||'')===String(b.baselineDigest||'')&&sameStrings(a.scopeIds,b.scopeIds)&&sameStrings(a.productIds,b.productIds);
 }
 async function createPackage(scopeId){
  const snap=await readStores(['locations','products','lots','suppliers','categories','settings']);
@@ -50,10 +50,11 @@ async function createPackage(scopeId){
  const directCategories=new Set(selectedProducts.map(p=>p.categoryId).filter(Boolean)),categoryIds=categoryClosure(categories,directCategories),selectedCategories=categories.filter(c=>categoryIds.has(c.id));
  const allowedSettings=new Set(['storeName','expiryCautionDays','expiryWarningDays','fontSize']),selectedSettings=settings.filter(s=>allowedSettings.has(s.key));
  const sourceDeviceId=await ensureDeviceId(),sourceStoreName=selectedSettings.find(x=>x.key==='storeName')?.value||'';
- const job={jobId:uid(),build:BUILD,createdAt:now(),sourceDeviceId,sourceStoreName,scopeId,scopeName:scope.name||'担当範囲',scopeIds:[...scopeIds],productIds:selectedProducts.map(p=>p.id)};
+ const baseline={products:clone(selectedProducts),lots:clone(selectedLots)},baselineDigest=await digestBaseline(baseline);
+ const job={jobId:uid(),build:BUILD,baselineDigest,createdAt:now(),sourceDeviceId,sourceStoreName,scopeId,scopeName:scope.name||'担当範囲',scopeIds:[...scopeIds],productIds:selectedProducts.map(p=>p.id)};
  const data={settings:clone(selectedSettings),locations:clone(selectedLocations),suppliers:clone(selectedSuppliers),categories:clone(selectedCategories),products:clone(selectedProducts),lots:clone(selectedLots),transactions:[]};
  window.BackupService.validateData(data);
- const pkg={format:PACKAGE_FORMAT,schemaVersion:SCHEMA_VERSION,appVersion:'2.x',build:BUILD,job,baseline:{products:clone(selectedProducts),lots:clone(selectedLots)},data};
+ const pkg={format:PACKAGE_FORMAT,schemaVersion:SCHEMA_VERSION,appVersion:'2.x',build:BUILD,job,baseline,data};
  await recordJob({...job,status:'発行済み'});return pkg;
 }
 function normalizePackage(input){
@@ -150,8 +151,8 @@ function validateAgainstIssued(result,settings){
 }
 async function previewResult(input){
  if(await getSetting('workSession'))throw new Error('子機作業中の端末には作業結果を取り込めません');
- const result=normalizeResult(input),snap=await readStores(['settings','products','lots']),settingMap=new Map(snap.settings.map(x=>[x.key,x.value]));
- validateAgainstIssued(result,settingMap);
+ const result=normalizeResult(input),resultDigest=await digestBaseline(result.baseline),snap=await readStores(['settings','products','lots']),settingMap=new Map(snap.settings.map(x=>[x.key,x.value]));
+ const issued=validateAgainstIssued(result,settingMap);if(resultDigest!==issued.baselineDigest)throw new Error('作業開始時データの整合性を確認できません');
  const imported=Array.isArray(settingMap.get('workImportedJobs'))?settingMap.get('workImportedJobs'):[];
  if(imported.some(x=>x.jobId===result.job.jobId))throw new Error('この共同作業結果は既に取り込み済みです');
  const pids=new Set(result.job.productIds),conflicts=[];
@@ -162,7 +163,7 @@ async function previewResult(input){
  return{result,conflicts,canCommit:conflicts.length===0,summary:resultSummary(result)};
 }
 async function commitResult(input){
- const result=normalizeResult(input?.result?input.result:input),pids=new Set(result.job.productIds),d=await DB().open();
+ const result=normalizeResult(input?.result?input.result:input),resultDigest=await digestBaseline(result.baseline),pids=new Set(result.job.productIds),d=await DB().open();
  return new Promise((resolve,reject)=>{
   const tx=d.transaction(['products','lots','transactions','settings'],'readwrite'),ps=tx.objectStore('products'),ls=tx.objectStore('lots'),ts=tx.objectStore('transactions'),ss=tx.objectStore('settings');
   const reqs={products:ps.getAll(),lots:ls.getAll(),transactions:ts.getAll(),device:ss.get('deviceId'),store:ss.get('storeName'),imported:ss.get('workImportedJobs'),jobs:ss.get('workJobs'),session:ss.get('workSession')};
@@ -171,7 +172,7 @@ async function commitResult(input){
   const finishRead=()=>{if(--pending>0||finished)return;try{
     if(out.session?.value)throw new Error('子機作業中の端末には作業結果を取り込めません');
     const settingMap=new Map([['deviceId',out.device?.value],['storeName',out.store?.value],['workImportedJobs',out.imported?.value],['workJobs',out.jobs?.value]]);
-    validateAgainstIssued(result,settingMap);
+    const issued=validateAgainstIssued(result,settingMap);if(resultDigest!==issued.baselineDigest)throw new Error('作業開始時データの整合性を確認できません');
     const imported=Array.isArray(out.imported?.value)?out.imported.value:[];
     if(imported.some(x=>x.jobId===result.job.jobId))throw new Error('この共同作業結果は既に取り込み済みです');
     const currentProducts=(out.products||[]).filter(p=>pids.has(p.id)),currentLots=(out.lots||[]).filter(l=>pids.has(l.productId));
