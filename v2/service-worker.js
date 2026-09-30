@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='inventory-pwa-v2-shell-20260927c';
+const CACHE='inventory-pwa-v2-shell-20260930a';
 const SHELL=[
   './','./index.html','./manual.html','./style.css','./manifest.webmanifest',
   './db.js','./inventory-service.js','./master-service.js','./backup-service.js','./migration-service.js',
@@ -31,5 +31,5 @@ self.addEventListener('fetch',event=>{
   event.respondWith(fetch(req).then(res=>{
     if(res&&res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy));}
     return res;
-  }).catch(()=>caches.match(req)));
+  }).catch(()=>caches.match(req,{ignoreSearch:true})));
 });
