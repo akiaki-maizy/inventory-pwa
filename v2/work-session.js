@@ -212,8 +212,8 @@ async function refreshModeUI(){
   if(banner){banner.classList.remove('hidden');banner.innerHTML=`<strong>子機作業モード${session.resultExportedAt?'（結果作成済み）':''}</strong><span>${esc(session.job.scopeName)} / 作業ID ${esc(session.job.jobId.slice(0,8))}</span>`;}
   normal?.classList.add('hidden');importPanel?.classList.add('hidden');child?.classList.remove('hidden');
   const info=document.getElementById('workChildInfo');if(info)info.textContent=`${session.job.sourceStoreName} / ${session.job.scopeName} / 開始 ${String(session.startedAt||'').replace('T',' ').slice(0,16)}${session.resultDeliveredAt?' / 結果保存・共有済み':''}`;
-  for(const id of ['manageBtn','addLocationBtn','addProductBtn'])document.getElementById(id)?.classList.add('hidden');
- }else{banner?.classList.add('hidden');normal?.classList.remove('hidden');importPanel?.classList.remove('hidden');child?.classList.add('hidden');await fillScopes();await renderJobs();}
+  for(const id of ['manageBtn','addLocationBtn','addProductBtn'])document.getElementById(id)?.classList.add('hidden');for(const id of ['settingsStoreName','expiryCautionDays','expiryWarningDays','saveSettingsBtn','restoreBackupFile','migrationFile','commitMigrationBtn','deleteAllDataBtn']){const el=document.getElementById(id);if(el)el.disabled=true;}
+ }else{banner?.classList.add('hidden');normal?.classList.remove('hidden');importPanel?.classList.remove('hidden');child?.classList.add('hidden');for(const id of ['settingsStoreName','expiryCautionDays','expiryWarningDays','saveSettingsBtn','restoreBackupFile','migrationFile','deleteAllDataBtn']){const el=document.getElementById(id);if(el)el.disabled=false;}await fillScopes();await renderJobs();}
 }
 async function restoreOriginal(file){
  const backup=window.BackupService.normalizeBackup(await readFile(file)),session=await getSetting('workSession');
