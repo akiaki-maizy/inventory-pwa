@@ -10,14 +10,15 @@ const reportRows=await InventoryCSV.buildReportRows(),reportBase=reportRows.find
 line('棚卸報告CSVは1商品1行',reportRows.filter(r=>r[6]===persistedProduct.jan).length===1);
 assertEq(reportBase[1],'食品','棚卸報告CSV大分類');
 assertEq(reportBase[2],'加工品','棚卸報告CSV中分類');
-assertEq(reportBase[7],await total(product.id),'棚卸報告CSV総数量');
-const reportQty=InventoryCSV.qtyParts(await total(product.id),12);assertEq(reportBase[8],reportQty.cases,'棚卸報告CSVケース数');assertEq(reportBase[9],reportQty.loose,'棚卸報告CSVバラ数');
-line('棚卸報告CSVに数量表示を保持',String(reportBase[10]).includes('ケース'));
-line('棚卸報告CSVに複数保管場所内訳を保持',String(reportBase[11]).includes('上段')&&String(reportBase[11]).includes('下段編集'));
-line('棚卸報告CSVにロット内訳を保持',Number(reportBase[12])>=1&&String(reportBase[13]).length>0);
-line('棚卸報告CSVは0在庫商品も出力',!!reportZero&&Number(reportZero[7])===0);
-line('棚卸報告CSVは期限なし商品を明示',!!reportNoExpiry&&reportNoExpiry[14]==='期限なし'&&String(reportNoExpiry[13]).includes('期限なし'));
-line('棚卸報告CSVヘッダー確定',InventoryCSV.REPORT_HEADERS.join(',')==='店舗,大分類,中分類,小分類,商品名,規格,JANコード,総数量(個),ケース数,バラ数,数量表示,保管場所別内訳,ロット数,ロット内訳,期限区分');
+assertEq(reportBase[7],12,'棚卸報告CSVケース入数');
+assertEq(reportBase[8],await total(product.id),'棚卸報告CSV総数量');
+const reportQty=InventoryCSV.qtyParts(await total(product.id),12);assertEq(reportBase[9],reportQty.cases,'棚卸報告CSVケース数');assertEq(reportBase[10],reportQty.loose,'棚卸報告CSVバラ数');
+line('棚卸報告CSVに数量表示を保持',String(reportBase[11]).includes('ケース'));
+line('棚卸報告CSVに複数保管場所内訳を保持',String(reportBase[12]).includes('上段')&&String(reportBase[12]).includes('下段編集'));
+line('棚卸報告CSVにロット内訳を保持',Number(reportBase[13])>=1&&String(reportBase[14]).length>0);
+line('棚卸報告CSVは0在庫商品も出力',!!reportZero&&Number(reportZero[8])===0);
+line('棚卸報告CSVは期限なし商品を明示',!!reportNoExpiry&&reportNoExpiry[15]==='期限なし'&&String(reportNoExpiry[14]).includes('期限なし'));
+line('棚卸報告CSVヘッダー確定',InventoryCSV.REPORT_HEADERS.join(',')==='店舗,大分類,中分類,小分類,商品名,規格,JANコード,ケース入数,総数量(個),ケース数,バラ数,数量表示,保管場所別内訳,ロット数,ロット内訳,期限区分');
 const reportText=InventoryCSV.toReportCSV(reportRows);line('棚卸報告CSV UTF-8 BOM付き',reportText.charCodeAt(0)===0xFEFF);
 
 const orderA=await MasterService.saveProduct({name:'発注まとめ商品',spec:'A',locationId:shelf.id,casePack:6,orderTargetQty:30});
