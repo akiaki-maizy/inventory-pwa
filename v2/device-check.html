@@ -28,10 +28,10 @@
 <label><input type="checkbox">メイン機で結果プレビュー後に確定反映できる</label>
 <label><input type="checkbox">同じ結果を再読込すると二重取込を拒否する</label>
 </section>
-<p class="note">診断票 20261007a。チェック状態は保存しません。</p>
+<p class="note">診断票 20261007b。チェック状態は保存しません。</p>
 </main>
 <script>
-const EXPECTED='20261007a';
+const EXPECTED='20261007b';
 const checks=document.getElementById('checks'),summary=document.getElementById('summary'),detail=document.getElementById('detail');
 function row(name,status,text){const e=document.createElement('div');e.className='row';const a=document.createElement('span'),b=document.createElement('span');a.textContent=name;b.textContent=text;b.className=status;e.append(a,b);checks.appendChild(e);return status==='ok';}
 async function diagnose(){
