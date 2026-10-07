@@ -102,7 +102,8 @@ async function setLocationTotals(changes){
 }
 async function setProductTotals(changes){
  if(!Array.isArray(changes)||!changes.length)throw new Error('棚卸対象がありません');
- const results=[];for(const x of changes){const p=await InventoryDB.get('products',x.productId||x.id);if(!p)throw new Error('商品が見つかりません');results.push(await setLocationTotal(p.id,p.locationId,x.target));}return results;
+ const mapped=[];for(const x of changes){const p=await InventoryDB.get('products',x.productId||x.id);if(!p)throw new Error('商品が見つかりません');if(!p.locationId)throw new Error('標準保管場所が設定されていません');mapped.push({productId:p.id,locationId:p.locationId,target:x.target});}
+ return setLocationTotals(mapped);
 }
 async function transfer(productId,fromLocationId,toLocationId,qty){
  qty=intQty(qty,'移動数量');if(qty<=0)throw new Error('移動数量は1以上で指定してください');if(!fromLocationId||!toLocationId||fromLocationId===toLocationId)throw new Error('異なる移動元・移動先を指定してください');
