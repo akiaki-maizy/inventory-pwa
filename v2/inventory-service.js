@@ -74,7 +74,31 @@ async function setLocationTotals(changes){
  const clean=changes.map((x,i)=>({productId:String(x.productId||''),locationId:String(x.locationId||''),target:intQty(x.target,`${i+1}件目の棚卸数量`)}));
  if(clean.some(x=>!x.productId||!x.locationId))throw new Error('商品IDまたは保管場所IDがありません');
  if(new Set(clean.map(x=>x.productId+'|'+x.locationId)).size!==clean.length)throw new Error('同じ商品・保管場所が重複しています');
- const results=[];for(const x of clean)results.push(await setLocationTotal(x.productId,x.locationId,x.target));return results;
+ const d=await InventoryDB.open();
+ return new Promise((resolve,reject)=>{
+  const tx=d.transaction(['settings','products','lots','transactions','locations'],'readwrite'),ss=tx.objectStore('settings'),ps=tx.objectStore('products'),ls=tx.objectStore('lots'),ts=tx.objectStore('transactions'),locs=tx.objectStore('locations');
+  const reqs={session:ss.get('workSession'),store:ss.get('storeName'),products:ps.getAll(),lots:ls.getAll(),locations:locs.getAll()},out={},keys=Object.keys(reqs);let pending=keys.length,finished=false,result=[];
+  const fail=e=>{if(finished)return;finished=true;try{tx.abort();}catch(_){}reject(e instanceof Error?e:new Error(String(e)));};
+  const finish=()=>{if(--pending>0||finished)return;try{
+   const session=out.session?.value||null;if(session?.resultExportedAt)throw new Error('共同作業結果を作成済みのため、在庫は変更できません');
+   const storeName=out.store?.value||'',products=new Map((out.products||[]).map(p=>[p.id,p])),locations=out.locations||[],allLots=(out.lots||[]).map(l=>({...l})),scope=session?.job?new Set(session.job.scopeIds||[]):null;
+   const totals=new Map();for(const l of allLots)totals.set(l.productId,(totals.get(l.productId)||0)+Number(l.qty||0));
+   for(const item of clean){
+    const product=products.get(item.productId);if(!product)throw new Error('商品が見つかりません');activeLocation(locations,item.locationId);if(scope&&!scope.has(item.locationId))throw new Error('共同作業の担当範囲外は棚卸できません');
+    const active=allLots.filter(l=>l.productId===item.productId&&l.locationId===item.locationId&&Number(l.qty||0)>0).sort((a,b)=>expiryKey(a).localeCompare(expiryKey(b))||String(a.receivedAt||'').localeCompare(String(b.receivedAt||''))),current=active.reduce((sum,l)=>sum+Number(l.qty||0),0),diff=item.target-current;
+    if(!diff){result.push({productId:item.productId,locationId:item.locationId,balance:totals.get(item.productId)||0,diff:0,locationBalance:current});continue;}
+    if(diff>0){const lot={id:uid(),productId:item.productId,locationId:item.locationId,qty:diff,expiry:null,receivedAt:today()};ls.put(lot);allLots.push(lot);}
+    else{let remaining=-diff;for(const lot of active){if(!remaining)break;const take=Math.min(Number(lot.qty),remaining),after=Number(lot.qty)-take;if(after===0){ls.delete(lot.id);lot.qty=0;}else{lot.qty=after;ls.put({...lot});}remaining-=take;}}
+    const balance=(totals.get(item.productId)||0)+diff;totals.set(item.productId,balance);
+    ts.put({id:uid(),timestamp:new Date().toISOString(),productId:item.productId,lotId:null,locationId:item.locationId,type:'棚卸調整',qty:diff,balance,reason:null,note:`保管場所別棚卸 ${current}個 → ${item.target}個`,unitPrice:null,storeName,fromLocationId:null,toLocationId:null,movedQty:null});
+    result.push({productId:item.productId,locationId:item.locationId,balance,diff,locationBalance:item.target});
+   }
+  }catch(e){fail(e);}};
+  for(const k of keys){reqs[k].onsuccess=()=>{out[k]=reqs[k].result;finish();};reqs[k].onerror=()=>fail(reqs[k].error||new Error('一括棚卸の事前読込に失敗しました'));}
+  tx.oncomplete=()=>{if(!finished){finished=true;resolve(result);}};
+  tx.onerror=()=>fail(tx.error||new Error('一括棚卸に失敗しました'));
+  tx.onabort=()=>{if(!finished){finished=true;reject(tx.error||new Error('一括棚卸が中断されました'));}};
+ });
 }
 async function setProductTotals(changes){
  if(!Array.isArray(changes)||!changes.length)throw new Error('棚卸対象がありません');
