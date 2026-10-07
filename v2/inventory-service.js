@@ -68,7 +68,7 @@ async function setLocationTotal(productId,locationId,target){
   const balance=productTotal+diff;ctx.addHistory({locationId,type:'棚卸調整',qty:diff,balance,note:`保管場所別棚卸 ${current}個 → ${target}個`});return{balance,diff,locationBalance:target};
  });
 }
-async function setProductTotal(productId,target){target=intQty(target,'棚卸数量');return mutate(productId,ctx=>{const locs=[...new Set(ctx.productLots.filter(l=>Number(l.qty||0)>0).map(l=>l.locationId).filter(Boolean))];if(locs.length>1)throw new Error('複数保管場所に在庫があるため、保管場所別に棚卸してください');return setLocationTotal(productId,locs[0]||ctx.product.locationId,target);});}
+async function setProductTotal(productId,target){target=intQty(target,'棚卸数量');const[p,lots]=await Promise.all([InventoryDB.get('products',productId),InventoryDB.getAll('lots')]);if(!p)throw new Error('商品が見つかりません');const locs=[...new Set(lots.filter(l=>l.productId===productId&&Number(l.qty||0)>0).map(l=>l.locationId).filter(Boolean))];if(locs.length>1)throw new Error('複数保管場所に在庫があるため、保管場所別に棚卸してください');const locationId=locs[0]||p.locationId;if(!locationId)throw new Error('保管場所を設定してください');return setLocationTotal(productId,locationId,target);}
 async function setLocationTotals(changes){
  if(!Array.isArray(changes)||!changes.length)throw new Error('棚卸対象がありません');
  const clean=changes.map((x,i)=>({productId:String(x.productId||''),locationId:String(x.locationId||''),target:intQty(x.target,`${i+1}件目の棚卸数量`)}));
