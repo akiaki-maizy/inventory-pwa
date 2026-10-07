@@ -102,7 +102,8 @@ async function setLocationTotals(changes){
 }
 async function setProductTotals(changes){
  if(!Array.isArray(changes)||!changes.length)throw new Error('棚卸対象がありません');
- const mapped=[];for(const x of changes){const p=await InventoryDB.get('products',x.productId||x.id);if(!p)throw new Error('商品が見つかりません');if(!p.locationId)throw new Error('標準保管場所が設定されていません');mapped.push({productId:p.id,locationId:p.locationId,target:x.target});}
+ const allLots=await InventoryDB.getAll('lots'),mapped=[];
+ for(const x of changes){const p=await InventoryDB.get('products',x.productId||x.id);if(!p)throw new Error('商品が見つかりません');const locs=[...new Set(allLots.filter(l=>l.productId===p.id&&Number(l.qty||0)>0).map(l=>l.locationId).filter(Boolean))];if(locs.length>1)throw new Error('複数保管場所に在庫がある商品は場所別に棚卸してください');const locationId=locs[0]||p.locationId;if(!locationId)throw new Error('標準保管場所が設定されていません');mapped.push({productId:p.id,locationId,target:x.target});}
  return setLocationTotals(mapped);
 }
 async function transfer(productId,fromLocationId,toLocationId,qty){
