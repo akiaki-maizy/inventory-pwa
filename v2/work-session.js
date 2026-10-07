@@ -43,9 +43,15 @@ async function createPackage(scopeId){
  const {locations,products,lots,suppliers,categories,settings}=snap;
  if(settings.find(x=>x.key==='workSession')?.value)throw new Error('子機作業中は新しい共同作業を発行できません');
  const scope=locations.find(x=>x.id===scopeId);if(!scope)throw new Error('担当する保管場所が見つかりません');if(scope.active===false)throw new Error('使用停止中の保管場所は担当範囲にできません');
- const scopeIds=descendants(locations,scopeId),selectedLocations=locations.filter(x=>scopeIds.has(x.id)),selectedProducts=products.filter(p=>p.active!==false&&scopeIds.has(p.locationId));
+ const scopeIds=descendants(locations,scopeId);
+ const selectedLots=lots.filter(l=>scopeIds.has(l.locationId));
+ const productIds=new Set(selectedLots.map(l=>l.productId));
+ for(const p of products)if(p.active!==false&&p.locationId&&scopeIds.has(p.locationId))productIds.add(p.id);
+ const selectedProducts=products.filter(p=>p.active!==false&&productIds.has(p.id));
  if(!selectedProducts.length)throw new Error('選択した保管場所に使用中の商品がありません');
- const productIds=new Set(selectedProducts.map(p=>p.id)),selectedLots=lots.filter(l=>productIds.has(l.productId));
+ const requiredLocationIds=new Set(scopeIds);
+ for(const p of selectedProducts){if(p.locationId){requiredLocationIds.add(p.locationId);let cur=locations.find(x=>x.id===p.locationId);if(cur?.parentId)requiredLocationIds.add(cur.parentId);}}
+ const selectedLocations=locations.filter(x=>requiredLocationIds.has(x.id));
  const supplierIds=new Set(selectedProducts.map(p=>p.supplierId).filter(Boolean)),selectedSuppliers=suppliers.filter(s=>supplierIds.has(s.id));
  const directCategories=new Set(selectedProducts.map(p=>p.categoryId).filter(Boolean)),categoryIds=categoryClosure(categories,directCategories),selectedCategories=categories.filter(c=>categoryIds.has(c.id));
  const allowedSettings=new Set(['storeName','expiryCautionDays','expiryWarningDays','fontSize']),selectedSettings=settings.filter(s=>allowedSettings.has(s.key));
@@ -95,11 +101,11 @@ function validateResult(obj){
  for(const p of obj.baseline.products){safeId(p?.id,'開始時商品ID');if(!pids.has(p.id))throw new Error('担当外の商品が開始時データに含まれています');if(baselineProducts.has(p.id))throw new Error('開始時商品IDが重複しています');baselineProducts.set(p.id,p);}
  if(baselineProducts.size!==pids.size)throw new Error('開始時商品と担当商品の件数が一致しません');
  const baselineLotIds=new Set();
- for(const l of obj.baseline.lots){safeId(l?.id,'開始時ロットID');if(baselineLotIds.has(l.id))throw new Error('開始時ロットIDが重複しています');baselineLotIds.add(l.id);if(!pids.has(l.productId))throw new Error('担当外ロットが開始時データに含まれています');safeInteger(l.qty,'開始時ロット数量',{min:0,max:Number.MAX_SAFE_INTEGER});const p=baselineProducts.get(l.productId);if(l.locationId!==p?.locationId)throw new Error('開始時ロットの保管場所が商品マスタと一致しません');}
+ for(const l of obj.baseline.lots){safeId(l?.id,'開始時ロットID');if(baselineLotIds.has(l.id))throw new Error('開始時ロットIDが重複しています');baselineLotIds.add(l.id);if(!pids.has(l.productId))throw new Error('担当外ロットが開始時データに含まれています');safeInteger(l.qty,'開始時ロット数量',{min:0,max:Number.MAX_SAFE_INTEGER});if(!scopeIds.has(l.locationId))throw new Error('担当外保管場所が開始時データに含まれています');}
  for(const l of obj.finalLots){
   safeId(l?.id,'ロットID');if(lotIds.has(l.id))throw new Error('作業結果のロットIDが重複しています');lotIds.add(l.id);
   safeId(l.productId,'ロット商品ID');if(!pids.has(l.productId))throw new Error('担当外商品のロットが含まれています');
-  if(l.locationId!=null){safeId(l.locationId,'ロット保管場所ID');if(!scopeIds.has(l.locationId))throw new Error('担当外保管場所のロットが含まれています');}const product=baselineProducts.get(l.productId);if(l.locationId!==product?.locationId)throw new Error('作業結果ロットの保管場所が商品マスタと一致しません');
+  if(l.locationId!=null){safeId(l.locationId,'ロット保管場所ID');if(!scopeIds.has(l.locationId))throw new Error('担当外保管場所のロットが含まれています');}
   safeInteger(l.qty,'作業結果の数量',{min:0,max:Number.MAX_SAFE_INTEGER});
   if(!validDate(l.expiry))throw new Error('作業結果の賞味期限が不正です');
   if(l.receivedAt!=null&&!validDate(l.receivedAt))throw new Error('作業結果の入荷日が不正です');
@@ -108,7 +114,7 @@ function validateResult(obj){
  for(const t of obj.transactions){
   safeId(t?.id,'履歴ID');if(txIds.has(t.id))throw new Error('作業履歴IDが重複しています');txIds.add(t.id);
   safeId(t.productId,'履歴商品ID');if(!pids.has(t.productId))throw new Error('担当外商品の履歴が含まれています');
-  if(t.locationId!=null){safeId(t.locationId,'履歴保管場所ID');if(!scopeIds.has(t.locationId))throw new Error('担当外保管場所の履歴が含まれています');}const product=baselineProducts.get(t.productId);if(t.locationId!==product?.locationId)throw new Error('作業履歴の保管場所が商品マスタと一致しません');
+  if(t.locationId!=null){safeId(t.locationId,'履歴保管場所ID');if(!scopeIds.has(t.locationId))throw new Error('担当外保管場所の履歴が含まれています');}
   if(t.lotId!=null)safeId(t.lotId,'履歴ロットID');
   safeInteger(t.qty,'作業履歴の数量',{min:-Number.MAX_SAFE_INTEGER,max:Number.MAX_SAFE_INTEGER});
   safeInteger(t.balance,'作業履歴の残数',{min:0,max:Number.MAX_SAFE_INTEGER});
@@ -171,15 +177,15 @@ async function previewResult(input){
  const issued=validateAgainstIssued(result,settingMap);if(resultDigest!==issued.baselineDigest)throw new Error('作業開始時データの整合性を確認できません');
  const imported=Array.isArray(settingMap.get('workImportedJobs'))?settingMap.get('workImportedJobs'):[];
  if(imported.some(x=>x.jobId===result.job.jobId))throw new Error('この共同作業結果は既に取り込み済みです');
- const pids=new Set(result.job.productIds),conflicts=[];
+ const pids=new Set(result.job.productIds),scopeIds=new Set(result.job.scopeIds),conflicts=[];
  if(!same(snap.products.filter(p=>pids.has(p.id)),result.baseline?.products||[]))conflicts.push('作業開始後に担当範囲の商品マスタが変更されています');
- if(!same(snap.lots.filter(l=>pids.has(l.productId)),result.baseline?.lots||[]))conflicts.push('作業開始後に担当範囲の在庫・ロットが変更されています');
- const outsideLotIds=new Set(snap.lots.filter(l=>!pids.has(l.productId)).map(l=>l.id));
+ if(!same(snap.lots.filter(l=>pids.has(l.productId)&&scopeIds.has(l.locationId)),result.baseline?.lots||[]))conflicts.push('作業開始後に担当範囲の在庫・ロットが変更されています');
+ const outsideLotIds=new Set(snap.lots.filter(l=>!scopeIds.has(l.locationId)).map(l=>l.id));
  if(result.finalLots.some(l=>outsideLotIds.has(l.id)))conflicts.push('担当外在庫と同じロットIDが含まれています');
  return{result,conflicts,canCommit:conflicts.length===0,summary:resultSummary(result)};
 }
 async function commitResult(input){
- const result=normalizeResult(input?.result?input.result:input),resultDigest=await digestBaseline(result.baseline),pids=new Set(result.job.productIds),d=await DB().open();
+ const result=normalizeResult(input?.result?input.result:input),resultDigest=await digestBaseline(result.baseline),pids=new Set(result.job.productIds),scopeIds=new Set(result.job.scopeIds),d=await DB().open();
  return new Promise((resolve,reject)=>{
   const tx=d.transaction(['products','lots','transactions','settings'],'readwrite'),ps=tx.objectStore('products'),ls=tx.objectStore('lots'),ts=tx.objectStore('transactions'),ss=tx.objectStore('settings');
   const reqs={products:ps.getAll(),lots:ls.getAll(),transactions:ts.getAll(),device:ss.get('deviceId'),store:ss.get('storeName'),imported:ss.get('workImportedJobs'),jobs:ss.get('workJobs'),session:ss.get('workSession')};
@@ -191,16 +197,16 @@ async function commitResult(input){
     const issued=validateAgainstIssued(result,settingMap);if(resultDigest!==issued.baselineDigest)throw new Error('作業開始時データの整合性を確認できません');
     const imported=Array.isArray(out.imported?.value)?out.imported.value:[];
     if(imported.some(x=>x.jobId===result.job.jobId))throw new Error('この共同作業結果は既に取り込み済みです');
-    const currentProducts=(out.products||[]).filter(p=>pids.has(p.id)),currentLots=(out.lots||[]).filter(l=>pids.has(l.productId));
+    const currentProducts=(out.products||[]).filter(p=>pids.has(p.id)),currentLots=(out.lots||[]).filter(l=>pids.has(l.productId)&&scopeIds.has(l.locationId)),outsideLots=(out.lots||[]).filter(l=>!scopeIds.has(l.locationId));
     if(!same(currentProducts,result.baseline?.products||[]))throw new Error('確定直前に担当範囲の商品マスタが変更されました');
     if(!same(currentLots,result.baseline?.lots||[]))throw new Error('確定直前に担当範囲の在庫・ロットが変更されました');
-    const outsideLotIds=new Set((out.lots||[]).filter(l=>!pids.has(l.productId)).map(l=>l.id));
+    const outsideLotIds=new Set(outsideLots.map(l=>l.id));
     if(result.finalLots.some(l=>outsideLotIds.has(l.id)))throw new Error('担当外在庫と同じロットIDが含まれています');
     const currentTxIds=new Set((out.transactions||[]).map(x=>x.id));for(const t of result.transactions)if(currentTxIds.has(t.id))throw new Error('同じ履歴IDが既に存在するため取り込めません');
     const jobs=Array.isArray(out.jobs?.value)?out.jobs.value:[],importedNext=[{jobId:result.job.jobId,scopeName:result.job.scopeName,childDeviceId:result.childDeviceId,importedAt:now()},...imported.filter(x=>x.jobId!==result.job.jobId)].slice(0,200),jobsNext=jobs.map(x=>x.jobId===result.job.jobId?{...x,status:'取込済み',importedAt:now()}:x);
     for(const l of currentLots)ls.delete(l.id);
     for(const l of result.finalLots)ls.put(clone(l));
-    for(const t of result.transactions)ts.put({...clone(t),workJobId:result.job.jobId,workDeviceId:result.childDeviceId||null});
+    const outsideQtyByProduct=new Map();for(const l of outsideLots)outsideQtyByProduct.set(l.productId,(outsideQtyByProduct.get(l.productId)||0)+Number(l.qty||0));for(const t of result.transactions){const extra=outsideQtyByProduct.get(t.productId)||0;ts.put({...clone(t),balance:t.balance==null?null:Number(t.balance)+extra,workJobId:result.job.jobId,workDeviceId:result.childDeviceId||null});}
     ss.put({key:'workImportedJobs',value:importedNext});ss.put({key:'workJobs',value:jobsNext});
     summary=resultSummary(result);
   }catch(e){abort(e);}};
