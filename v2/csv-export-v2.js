@@ -3,7 +3,7 @@
 
 const HEADERS=['店舗','商品ID','JANコード','商品名','規格','仕入先','参考単価','保管場所','棚・区画','数量','賞味期限'];
 const REPORT_HEADERS=[
-  '店舗','大分類','中分類','小分類','商品名','規格','JANコード',
+  '店舗','大分類','中分類','小分類','商品名','規格','JANコード','ケース入数',
   '総数量(個)','ケース数','バラ数','数量表示',
   '保管場所別内訳','ロット数','ロット内訳','期限区分'
 ];
@@ -86,7 +86,7 @@ async function buildReportRows(){
   const rows=[];
   for(const p of products.filter(x=>x.active!==false)){
     const productLots=lotsByProduct.get(p.id)||[],total=productLots.reduce((sum,l)=>sum+Number(l.qty||0),0),pack=Math.max(1,Number(p.casePack)||1),q=qtyParts(total,pack),[c1,c2,c3]=categoryParts(p.categoryId,catMap),lot=lotSummary(productLots,pack,p.expiryManaged!==false),expiryType=p.expiryManaged===false?'期限なし':productLots.some(l=>!l.expiry)?'期限未設定あり':'期限管理あり';
-    rows.push([storeName,c1,c2,c3,p.name||'',p.spec||'',p.jan||'',total,q.cases,q.loose,q.text,locationSummary(productLots,pack,locMap),lot.lotCount,lot.detail,expiryType]);
+    rows.push([storeName,c1,c2,c3,p.name||'',p.spec||'',p.jan||'',pack,total,q.cases,q.loose,q.text,locationSummary(productLots,pack,locMap),lot.lotCount,lot.detail,expiryType]);
   }
   rows.sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'ja')||String(a[2]).localeCompare(String(b[2]),'ja')||String(a[3]).localeCompare(String(b[3]),'ja')||String(a[4]).localeCompare(String(b[4]),'ja')||String(a[5]).localeCompare(String(b[5]),'ja'));
   return rows;
