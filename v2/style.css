@@ -25,3 +25,6 @@
 
 /* 20260927c: temporary multi-device work sessions */
 .work-banner{max-width:900px;margin:10px auto 0;padding:11px 14px;border:2px solid #b45309;border-radius:10px;background:#fff7ed;color:#7c2d12;display:flex;gap:10px;justify-content:space-between;align-items:center}.work-banner strong,.work-banner span{display:block}.work-prepared{padding:10px 12px;border:1px solid #b9c7df;border-radius:9px;background:#f7f9fc;font-size:.84rem}.menu-section h3{margin-top:18px}.menu-section h3:first-of-type{margin-top:12px}@media(max-width:560px){.work-banner{margin:8px 10px 0;align-items:flex-start;flex-direction:column}.work-banner span{font-size:.82rem}}
+
+/* 20261009: product master usability */
+button:disabled{opacity:.45;cursor:not-allowed}.zero-stock-item{border-color:#d9a3a0;background:#fff8f7}.zero-stock-item .error-text{font-weight:700}.master-actions>summary>div{min-width:0}.master-actions>summary small{overflow-wrap:anywhere}
