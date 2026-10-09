@@ -53,7 +53,7 @@ async function render(){
  $('manageCategoryList').innerHTML=cats.length?'':'<div class="empty">分類はありません。</div>';
  for(const c of [...cats].sort((a,b)=>catPath(a).localeCompare(catPath(b),'ja'))){const active=c.active!==false,e=document.createElement('div');e.className='list-item manage-item';e.innerHTML=`<div><strong>${esc(catPath(c))}</strong><small>${active?'使用中':'使用停止中'}</small></div><button class="small-btn ${active?'danger-btn':'secondary'}">${active?'使用停止':'再開'}</button>`;e.querySelector('button').onclick=async()=>{try{await MasterService.setCategoryActive(c.id,!active);message(!active?'分類を再開しました':'分類を使用停止しました');await render();}catch(err){message(err.message);}};$('manageCategoryList').appendChild(e);}
 }
-$('manageProductSearch')?.addEventListener('input',renderProducts);
+$('manageAddProductBtn')?.addEventListener('click',()=>window.ProductMasterUI?.openProduct?.());$('manageAddLocationBtn')?.addEventListener('click',()=>$('addLocationBtn')?.click());$('manageProductSearch')?.addEventListener('input',renderProducts);
 $('manageProductFilter')?.addEventListener('change',renderProducts);
 $('addSupplierBtn').onclick=async()=>{try{await MasterService.saveSupplier({name:$('newSupplierName').value});$('newSupplierName').value='';message('仕入先を追加しました');await render();}catch(e){message(e.message);}};
 $('addCategoryBtn').onclick=async()=>{try{await MasterService.saveCategory({name:$('newCategoryName').value,parentId:$('newCategoryParent').value||null});$('newCategoryName').value='';message('分類を追加しました');await render();}catch(e){message(e.message);}};
