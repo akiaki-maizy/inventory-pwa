@@ -18,7 +18,7 @@ function renderProducts(){
   if(mode==='inactive'&&active)return false;
   if(mode==='zero'&&(!active||qty!==0))return false;
   if(mode==='stock'&&qty<=0)return false;
-  if(qRaw){const hay=[p.name,p.spec,p.jan,p.supplier,locationPath(p.locationId,locations),p.expiryManaged===false?'期限なし':'期限管理'].join(' ').toLowerCase();if(!hay.includes(qRaw))return false;}
+  if(qRaw){const hay=[p.name,p.spec,p.jan,p.supplier,locationPath(p.locationId,locations),productLocationSummary(p,lots,locations),p.expiryManaged===false?'期限なし':'期限管理'].join(' ').toLowerCase();if(!hay.includes(qRaw))return false;}
   return true;
  }).sort((a,b)=>String(a.p.name).localeCompare(String(b.p.name),'ja')||String(a.p.spec||'').localeCompare(String(b.p.spec||''),'ja'));
  const zeroCount=products.filter(p=>p.active!==false&&productStock(p,lots)===0).length;
@@ -33,7 +33,8 @@ function renderProducts(){
   const receive=e.querySelector('.receive-btn');receive.disabled=!active;receive.title=active?'':'使用再開後に入荷できます';receive.onclick=()=>active&&window.InventoryApp?.openReceive?.(p);
   e.querySelector('.history-btn').onclick=()=>window.InventoryApp?.openHistoryForProduct?.(p);
   e.querySelector('.edit-btn').onclick=()=>window.ProductMasterUI?.openProduct(p.id);
-  e.querySelector('.toggle-btn').onclick=async()=>{try{const result=await MasterService.setProductActive(p.id,!active);message(result.warning?`再開しました: ${result.warning}`:(!active?'商品を再開しました':'商品を使用停止しました'));await render();}catch(err){message(err.message);}};
+  const toggle=e.querySelector('.toggle-btn');toggle.disabled=active&&qty>0;toggle.title=toggle.disabled?`在庫が${qty}個残っているため使用停止できません`:'';
+  toggle.onclick=async()=>{try{const result=await MasterService.setProductActive(p.id,!active);message(result.warning?`再開しました: ${result.warning}`:(!active?'商品を再開しました':'商品を使用停止しました'));await render();}catch(err){message(err.message);}};
   box.appendChild(e);
  }
 }
