@@ -70,6 +70,6 @@ const depleted=await MasterService.saveProduct({name:'ロット消尽バック�
 await InventoryService.receive(depleted.id,[{qty:1,expiry:'2027-12-30'}]);
 await InventoryService.useFEFO(depleted.id,1);
 line('消尽済みロットの入荷履歴が残ってもバックアップ可能',!!(await BackupService.exportData()));
-$('summary').textContent='PASS：Ver.2 複数保管場所・発注・期限なし・数量調整・共同作業・棚卸報告CSVの回帰テストに合格';$('summary').className='pass';}catch(e){$('summary').textContent='FAIL：'+(e?.message||e);$('summary').className='fail';console.error(e);}finally{$('run').disabled=false;}}
+$('summary').textContent='PASS：Ver.2 複数保管場所・発注・期限なし・商品マスタ店舗間転用・共同作業・棚卸報告CSVの回帰テストに合格';$('summary').className='pass';}catch(e){$('summary').textContent='FAIL：'+(e?.message||e);$('summary').className='fail';console.error(e);}finally{$('run').disabled=false;}}
 $('run').addEventListener('click',run);
 })();
