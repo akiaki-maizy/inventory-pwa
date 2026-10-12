@@ -28,3 +28,14 @@
 
 /* 20261009: product master usability */
 button:disabled{opacity:.45;cursor:not-allowed}.zero-stock-item{border-color:#d9a3a0;background:#fff8f7}.zero-stock-item .error-text{font-weight:700}.master-actions>summary>div{min-width:0}.master-actions>summary small{overflow-wrap:anywhere}
+
+/* product master transfer */
+.master-transfer-box{margin-top:18px;padding-top:16px;border-top:1px solid #d8dde6}
+.master-transfer-box h3{margin:0 0 8px}
+.check-line{display:flex;align-items:center;gap:8px;font-weight:600}
+.check-line input{width:auto;margin:0}
+.product-master-preview-list{display:grid;gap:8px;max-height:52vh;overflow:auto;padding-right:2px}
+.product-master-preview-list .list-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.product-master-preview-list .list-item label{margin:0;min-width:155px}
+.product-master-preview-list .list-item select{margin-top:4px}
+@media(max-width:560px){.product-master-preview-list .list-item{display:block}.product-master-preview-list .list-item label{margin-top:8px;min-width:0}}
