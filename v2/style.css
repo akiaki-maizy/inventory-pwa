@@ -39,3 +39,5 @@ button:disabled{opacity:.45;cursor:not-allowed}.zero-stock-item{border-color:#d9
 .product-master-preview-list .list-item label{margin:0;min-width:155px}
 .product-master-preview-list .list-item select{margin-top:4px}
 @media(max-width:560px){.product-master-preview-list .list-item{display:block}.product-master-preview-list .list-item label{margin-top:8px;min-width:0}}
+
+.duplicate-master-item{border-color:#d9a441;background:#fffaf0}
